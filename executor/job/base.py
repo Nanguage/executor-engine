@@ -3,6 +3,7 @@ from queue import Queue
 
 from ..utils import CheckAttrRange
 from ..error import ExecutorError
+from ..base import ExecutorObj
 
 
 if T.TYPE_CHECKING:
@@ -28,7 +29,7 @@ class JobEmitError(ExecutorError):
     pass
 
 
-class Job():
+class Job(ExecutorObj):
 
     status = JobStatusAttr()
 

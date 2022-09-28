@@ -3,6 +3,7 @@ import typing as T
 from dataclasses import dataclass
 import time
 
+from .base import ExecutorObj
 from .job.base import Job, valid_job_statuses, JobStatusType
 
 
@@ -56,7 +57,7 @@ class Jobs:
         new_store[job.id] = old_store.pop(job.id)
 
 
-class Engine(object):
+class Engine(ExecutorObj):
     def __init__(
             self,
             setting: T.Optional[EngineSetting] = None,

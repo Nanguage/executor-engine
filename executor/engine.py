@@ -56,6 +56,18 @@ class Jobs:
         new_store = self._stores[new_status]
         new_store[job.id] = old_store.pop(job.id)
 
+    def get_job_by_id(self, job_id: str) -> T.Optional["Job"]:
+        for status in self.valid_statuses:
+            store = self._stores[status]
+            if job_id in store:
+                return store[job_id]
+
+    def all_jobs(self):
+        for status in self.valid_statuses:
+            store = self._stores[status]
+            for job in store.values():
+                yield job
+
 
 class Engine(ExecutorObj):
     def __init__(

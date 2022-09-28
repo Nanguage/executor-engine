@@ -1,5 +1,6 @@
 import typing as T
 from queue import Queue
+from datetime import datetime
 
 from ..utils import CheckAttrRange
 from ..error import ExecutorError
@@ -38,6 +39,8 @@ class Job(ExecutorObj):
             func: T.Callable, args: tuple,
             callback: T.Callable[[T.Any], None],
             error_callback: T.Callable[[Exception], None],
+            name: T.Optional[str] = None,
+            **kwargs
             ) -> None:
         super().__init__()
         self.func = func
@@ -47,6 +50,8 @@ class Job(ExecutorObj):
         self.engine: T.Optional["Engine"] = None
         self._status: str = "pending"
         self._for_join: Queue = Queue()
+        self.name = name or func.__name__
+        self.attrs = kwargs
 
     def __repr__(self) -> str:
         return f"<Job status={self.status} id={self.id[-8:]} func={self.func}>"
@@ -78,11 +83,13 @@ class Job(ExecutorObj):
         self._for_join.get()
 
     def on_done(self, res):
-        self.callback(res)
+        if self.callback is not None:
+            self.callback(res)
         self._on_finish("done")
 
     def on_failed(self, e: Exception):
-        self.error_callback(e)
+        if self.error_callback is not None:
+            self.error_callback(e)
         self._on_finish("failed")
 
     def join(self):
@@ -92,17 +99,26 @@ class Job(ExecutorObj):
         pass
 
     def cancel(self):
-        if self.status != "running":
-            return
-        try:
-            self.cancel_task()
-        except Exception as e:
-            print(str(e))
-        finally:
-            self._on_finish("canceled")
+        if self.status == "running":
+            try:
+                self.cancel_task()
+            except Exception as e:
+                print(str(e))
+            finally:
+                self._on_finish("canceled")
+        elif self.status == "pending":
+            self.engine.jobs.pending.pop(self.id)
 
     def cancel_task(self):
         pass
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'status': self.status,
+            'check_time': str(datetime.now()),
+        }
 
 
 class LocalJob(Job):

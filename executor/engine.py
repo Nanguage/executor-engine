@@ -1,7 +1,7 @@
 from collections import OrderedDict
 import typing as T
 from dataclasses import dataclass
-import time
+import asyncio
 
 from .base import ExecutorObj
 from .job.base import Job, valid_job_statuses, JobStatusType
@@ -61,6 +61,7 @@ class Jobs:
             store = self._stores[status]
             if job_id in store:
                 return store[job_id]
+        return None
 
     def all_jobs(self):
         for status in self.valid_statuses:
@@ -89,24 +90,22 @@ class Engine(ExecutorObj):
         self.thread_count = setting.max_threads
         self.process_count = setting.max_processes
 
-    def submit(self, job: Job):
+    async def submit(self, job: Job):
         assert job.status == "pending"
         job.engine = self
         self.jobs.add(job)
-        self.activate()
+        await self.activate()
 
-    def activate(self):
+    async def activate(self):
+        tasks = []
         for j in self.jobs.pending.values():
             if j.has_resource() and j.consume_resource():
-                j.emit()
+                task = asyncio.create_task(j.emit())
+                tasks.append(task)
                 break
+        await asyncio.gather(*tasks)
 
-    def wait(
-            self, time_interval=0.01,
-            print_running_jobs: bool = False):
-        while True:
-            if len(self.jobs.running) == 0:
-                break
-            if print_running_jobs:
-                print(list(self.jobs.running.values()))
-            time.sleep(time_interval)
+    async def wait(self):
+        for job in self.jobs.all_jobs():
+            if job.task is not None:
+                await job.task

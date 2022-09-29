@@ -1,3 +1,8 @@
+import asyncio
+import functools
+
+from loky import get_reusable_executor
+
 from .base import Job
 
 
@@ -22,15 +27,17 @@ class ProcessJob(Job):
             self.engine.process_count += 1
             return True
 
-    def run(self):
-        from pathos.multiprocessing import Pool
-        self._pool = Pool(processes=1)
-        self._future = self._pool.apply_async(
-            self.func, tuple(self.args), self.kwargs,
-            callback=self.on_done,
-            error_callback=self.on_failed,
-        )
+    async def run(self):
+        self.executor = executor = get_reusable_executor(max_workers=1)
+        loop = asyncio.get_running_loop()
+        func = functools.partial(self.func, **self.kwargs)
+        try:
+            result = await loop.run_in_executor(executor, func, *self.args)
+            await self.on_done(result)
+        except Exception as e:
+            await self.on_failed(e)
+        return result
 
-    def cancel_task(self):
-        self._pool.terminate()
-        del self._pool
+    def clear_context(self):
+        self.executor.shutdown()
+        del self.executor

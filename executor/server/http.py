@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 
 from ..engine import Engine
-from ..job import LocalJob, ThreadJob, ProcessJob
+from ..job import Job, LocalJob, ThreadJob, ProcessJob
 from ..job.base import JobEmitError
 from .task import TaskTable
 
@@ -25,7 +25,7 @@ class CallRequest(BaseModel):
 
 def create_app() -> FastAPI:
     app = FastAPI()
-    engine = app.engine = Engine()
+    engine = Engine()
 
     @app.post("/call")
     async def call(req: CallRequest):
@@ -33,6 +33,8 @@ def create_app() -> FastAPI:
             task = TASK_TABLE[req.task_name]
         except KeyError:
             return {"error": "Function not registered."}
+
+        job_cls: T.Type["Job"]
 
         if req.job_type == "local":
             job_cls = LocalJob
@@ -42,11 +44,11 @@ def create_app() -> FastAPI:
             job_cls = ProcessJob
 
         job = job_cls(
-            task.func, req.args, req.kwargs,
+            task.func, tuple(req.args), req.kwargs,
             callback=None,
             error_callback=None,
             name=task.name)
-        engine.submit(job)
+        await engine.submit(job)
         return job.to_dict()
 
     @app.get("/task_list")
@@ -74,11 +76,11 @@ def create_app() -> FastAPI:
         pending = engine.jobs.pending
         if job_id in running:
             job = running[job_id]
-            job.cancel()
+            await job.cancel()
             return job.to_dict()
         elif job_id in pending:
             job = pending[job_id]
-            job.cancel()
+            await job.cancel()
             return job.to_dict()
         else:
             return {"error": "The job is not in running or pending."}
@@ -86,8 +88,10 @@ def create_app() -> FastAPI:
     @app.get("/re_run/{job_id}")
     async def re_run_job(job_id: str):
         job = engine.jobs.get_job_by_id(job_id)
+        if job is None:
+            return {'error': 'Job not found.'}
         try:
-            job.emit()
+            await job.emit()
             return job.to_dict()
         except JobEmitError as e:
             return {'error': str(e)}

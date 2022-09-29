@@ -1,3 +1,4 @@
+import asyncio
 import typing as T
 from queue import Queue
 from datetime import datetime
@@ -30,29 +31,35 @@ class JobEmitError(ExecutorError):
     pass
 
 
+class InvalidStateError(ExecutorError):
+    pass
+
+
 class Job(ExecutorObj):
 
     status = JobStatusAttr()
 
     def __init__(
             self,
-            func: T.Callable, args: tuple, kwargs: dict,
-            callback: T.Callable[[T.Any], None],
-            error_callback: T.Callable[[Exception], None],
+            func: T.Callable,
+            args: T.Optional[tuple] = None,
+            kwargs: T.Optional[dict] = None,
+            callback: T.Optional[T.Callable[[T.Any], None]] = None,
+            error_callback: T.Optional[T.Callable[[Exception], None]] = None,
             name: T.Optional[str] = None,
             **attrs
             ) -> None:
         super().__init__()
         self.func = func
-        self.args = args
-        self.kwargs = kwargs
+        self.args = args or tuple()
+        self.kwargs = kwargs or {}
         self.callback = callback
         self.error_callback = error_callback
         self.engine: T.Optional["Engine"] = None
         self._status: str = "pending"
-        self._for_join: Queue = Queue()
         self.name = name or func.__name__
         self.attrs = attrs
+        self.task: T.Optional[asyncio.Task] = None
 
     def __repr__(self) -> str:
         return f"<Job status={self.status} id={self.id[-8:]} func={self.func}>"
@@ -66,52 +73,58 @@ class Job(ExecutorObj):
     def release_resource(self) -> bool:
         return True
 
-    def emit(self):
+    async def emit(self) -> asyncio.Task:
         _valid_status = ("pending", "canceled", "done", "failed")
         if self.status not in _valid_status:
             raise JobEmitError(
                 f"{self} is not in valid status({_valid_status})")
         self.status = "running"
-        self._for_join.put(0)
-        self.run()
+        loop = asyncio.get_running_loop()
+        task = loop.create_task(self.run())
+        self.task = task
+        return task
 
-    def _on_finish(self, new_status: JobStatusType = "done"):
+    async def _on_finish(self, new_status: JobStatusType = "done"):
         self.status = new_status
         self.release_resource()
         if self.engine is not None:
-            self.engine.activate()
-        self._for_join.task_done()
-        self._for_join.get()
+            await self.engine.activate()
 
-    def on_done(self, res):
+    async def on_done(self, res):
         if self.callback is not None:
             self.callback(res)
-        self._on_finish("done")
+        await self._on_finish("done")
 
-    def on_failed(self, e: Exception):
+    async def on_failed(self, e: Exception):
         if self.error_callback is not None:
             self.error_callback(e)
-        self._on_finish("failed")
+        await self._on_finish("failed")
 
-    def join(self):
-        self._for_join.join()
-
-    def run(self):
+    async def run(self):
         pass
 
-    def cancel(self):
+    async def cancel(self):
+        self.task.cancel()
         if self.status == "running":
             try:
-                self.cancel_task()
+                self.clear_context()
             except Exception as e:
                 print(str(e))
             finally:
-                self._on_finish("canceled")
+                await self._on_finish("canceled")
         elif self.status == "pending":
             self.engine.jobs.pending.pop(self.id)
 
-    def cancel_task(self):
+    def clear_context(self):
         pass
+
+    def result(self) -> T.Any:
+        if self.status != "done":
+            raise InvalidStateError(f"{self} is not done.")
+        if self.task is not None:
+            return self.task.result()
+        else:
+            raise InvalidStateError()
 
     def to_dict(self):
         return {
@@ -123,12 +136,13 @@ class Job(ExecutorObj):
 
 
 class LocalJob(Job):
-    def run(self):
+    async def run(self):
         success = False
         try:
             res = self.func(*self.args, **self.kwargs)
             success = True
         except Exception as e:
-            self.on_failed(e)
+            await self.on_failed(e)
         if success:
-            self.on_done(res)
+            await self.on_done(res)
+        return res

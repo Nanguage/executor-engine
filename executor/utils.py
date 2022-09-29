@@ -1,4 +1,7 @@
 import typing as T
+import asyncio
+import contextlib
+
 from .error import RangeCheckError, TypeCheckError
 
 
@@ -47,3 +50,23 @@ class CheckAttrType(object):
                 f"{self.valid_type}"
             )
         setattr(obj, self.attr, value)
+
+
+@contextlib.contextmanager
+def event_loop():
+    loop, is_new_loop = get_event_loop()
+    try:
+        yield loop
+    finally:
+        if is_new_loop:
+            loop.close()
+
+
+def get_event_loop() -> T.Tuple[asyncio.AbstractEventLoop, bool]:
+    is_new_loop = False
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        is_new_loop = True
+    return loop, is_new_loop

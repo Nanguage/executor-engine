@@ -1,39 +1,8 @@
-import typing as T
+import asyncio
+import functools
+from concurrent.futures import ThreadPoolExecutor
 
 from .base import Job
-from .utils import ThreadWithExc
-from ..error import ExecutorError
-
-
-class StopIThread(ExecutorError):
-    pass
-
-
-class IThread(ThreadWithExc):
-    def __init__(
-            self,
-            func: T.Callable, args: tuple, kwargs: dict,
-            callback: T.Callable[[T.Any], None],
-            error_callback: T.Callable[[Exception], None],
-            ) -> None:
-        super().__init__()
-        self.func = func
-        self._args = args
-        self._kwargs = kwargs
-        self.callback = callback
-        self.error_callback = error_callback
-
-    def run(self):
-        success = False
-        try:
-            res = self.func(*self._args, **self._kwargs)
-            success = True
-        except StopIteration:
-            pass
-        except Exception as e:
-            self.error_callback(e)
-        if success:
-            self.callback(res)
 
 
 class ThreadJob(Job):
@@ -57,18 +26,17 @@ class ThreadJob(Job):
             self.engine.thread_count += 1
             return True
 
-    def run(self):
-        self._thread = IThread(
-            func=self.func,
-            args=self.args, kwargs=self.kwargs,
-            callback=self.on_done,
-            error_callback=self.on_failed)
-        self._thread.start()
+    async def run(self):
+        exe = self.executor = ThreadPoolExecutor(1)
+        loop = asyncio.get_running_loop()
+        func = functools.partial(self.func, **self.kwargs)
+        try:
+            result = await loop.run_in_executor(exe, func, *self.args)
+            await self.on_done(result)
+        except Exception as e:
+            await self.on_failed(e)
+        return result
 
-    def cancel_task(self):
-        if self._thread.is_alive():
-            try:
-                self._thread.raiseExc(StopIteration)
-            except Exception:
-                pass
-        del self._thread
+    def clear_context(self):
+        self.executor.shutdown()
+        del self.executor

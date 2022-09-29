@@ -36,22 +36,23 @@ class Job(ExecutorObj):
 
     def __init__(
             self,
-            func: T.Callable, args: tuple,
+            func: T.Callable, args: tuple, kwargs: dict,
             callback: T.Callable[[T.Any], None],
             error_callback: T.Callable[[Exception], None],
             name: T.Optional[str] = None,
-            **kwargs
+            **attrs
             ) -> None:
         super().__init__()
         self.func = func
         self.args = args
+        self.kwargs = kwargs
         self.callback = callback
         self.error_callback = error_callback
         self.engine: T.Optional["Engine"] = None
         self._status: str = "pending"
         self._for_join: Queue = Queue()
         self.name = name or func.__name__
-        self.attrs = kwargs
+        self.attrs = attrs
 
     def __repr__(self) -> str:
         return f"<Job status={self.status} id={self.id[-8:]} func={self.func}>"
@@ -125,7 +126,7 @@ class LocalJob(Job):
     def run(self):
         success = False
         try:
-            res = self.func(*self.args)
+            res = self.func(*self.args, **self.kwargs)
             success = True
         except Exception as e:
             self.on_failed(e)

@@ -26,7 +26,7 @@ class ProcessJob(Job):
         from pathos.multiprocessing import Pool
         self._pool = Pool(processes=1)
         self._future = self._pool.apply_async(
-            self.func, tuple(self.args),
+            self.func, tuple(self.args), self.kwargs,
             callback=self.on_done,
             error_callback=self.on_failed,
         )

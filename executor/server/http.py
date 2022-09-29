@@ -10,16 +10,17 @@ from pydantic import BaseModel
 from ..engine import Engine
 from ..job import LocalJob, ThreadJob, ProcessJob
 from ..job.base import JobEmitError
+from .task import TaskTable
 
 
-FUNC_TABLE: T.Dict[str, T.Callable] = {
-    "eval": eval
-}
+TASK_TABLE = TaskTable()
+TASK_TABLE.register(eval)
 
 
 class CallRequest(BaseModel):
-    func_name: str
-    func_args: T.List
+    task_name: str
+    args: T.List
+    kwargs: T.Dict[str, T.Any]
     job_type: T.Literal["local", "thread", "process"]
 
 
@@ -29,9 +30,11 @@ def create_app() -> FastAPI:
 
     @app.post("/call")
     async def call(req: CallRequest):
-        if req.func_name not in FUNC_TABLE:
+        try:
+            task = TASK_TABLE[req.task_name]
+        except KeyError:
             return {"error": "Function not registered."}
-        func = FUNC_TABLE.get(req.func_name)
+
         if req.job_type == "local":
             job_cls = LocalJob
         elif req.job_type == "thread":
@@ -40,16 +43,16 @@ def create_app() -> FastAPI:
             job_cls = ProcessJob
 
         job = job_cls(
-            func, req.func_args,
+            task.func, req.args, req.kwargs,
             callback=None,
             error_callback=None,
-            name=req.func_name)
+            name=task.name)
         engine.submit(job)
         return job.to_dict()
 
-    @app.get("/func_list")
-    async def get_func_list():
-        return list(FUNC_TABLE.keys())
+    @app.get("/task_list")
+    async def get_task_list():
+        return list(TASK_TABLE.table.keys())
 
     @app.get("/job/{job_id}")
     async def get_job_status(job_id: str):

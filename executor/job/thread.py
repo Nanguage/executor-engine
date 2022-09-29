@@ -12,20 +12,21 @@ class StopIThread(ExecutorError):
 class IThread(ThreadWithExc):
     def __init__(
             self,
-            func: T.Callable, args: tuple,
+            func: T.Callable, args: tuple, kwargs: dict,
             callback: T.Callable[[T.Any], None],
             error_callback: T.Callable[[Exception], None],
             ) -> None:
         super().__init__()
         self.func = func
-        self.args = args
+        self._args = args
+        self._kwargs = kwargs
         self.callback = callback
         self.error_callback = error_callback
 
     def run(self):
         success = False
         try:
-            res = self.func(*self.args)
+            res = self.func(*self._args, **self._kwargs)
             success = True
         except StopIteration:
             pass
@@ -58,7 +59,8 @@ class ThreadJob(Job):
 
     def run(self):
         self._thread = IThread(
-            func=self.func, args=self.args,
+            func=self.func,
+            args=self.args, kwargs=self.kwargs,
             callback=self.on_done,
             error_callback=self.on_failed)
         self._thread.start()

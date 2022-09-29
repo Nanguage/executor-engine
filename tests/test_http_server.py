@@ -24,7 +24,9 @@ def test_register_task():
 def test_list_tasks():
     resp = client.get("/task_list")
     assert resp.status_code == 200
-    assert 'square' in resp.json()
+    assert 'square' in [
+        t['name'] for t in resp.json()
+    ]
 
 
 @pytest.mark.order(2)

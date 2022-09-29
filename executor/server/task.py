@@ -11,7 +11,14 @@ class Task(object):
         self.func = func
         self.name = name or func.__name__
         self.description = description
-        self.attr = kwargs
+        self.attrs = kwargs
+
+    def to_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "description": self.description,
+            "attrs": self.attrs,
+        }
 
 
 class TaskTable(object):

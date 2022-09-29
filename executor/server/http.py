@@ -1,4 +1,3 @@
-import datetime
 import typing as T
 
 import fire
@@ -52,7 +51,7 @@ def create_app() -> FastAPI:
 
     @app.get("/task_list")
     async def get_task_list():
-        return list(TASK_TABLE.table.keys())
+        return [t.to_dict() for t in TASK_TABLE.table.values()]
 
     @app.get("/job/{job_id}")
     async def get_job_status(job_id: str):

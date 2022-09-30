@@ -6,6 +6,8 @@ from .base import Job
 
 
 class ThreadJob(Job):
+    job_type: str = "thread"
+
     def has_resource(self) -> bool:
         if self.engine is None:
             return False

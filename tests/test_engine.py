@@ -1,7 +1,7 @@
 import asyncio
 
 from executor.engine import Engine
-from executor.job import LocalJob, ThreadJob, ProcessJob
+from executor.job import LocalJob, ThreadJob, ProcessJob, Job
 
 
 def test_submit_job():
@@ -32,9 +32,9 @@ def test_get_job_result():
 
     async def submit_job():
         for job_cls in test_job_cls:
-            job = job_cls(lambda x: x**2, (2,))
+            job: Job = job_cls(lambda x: x**2, (2,))
             await engine.submit(job)
-            await job.task
+            await job.join()
             assert job.result() == 4
 
     asyncio.run(submit_job())

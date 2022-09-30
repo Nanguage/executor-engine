@@ -7,6 +7,8 @@ from .base import Job
 
 
 class ProcessJob(Job):
+    job_type: str = "process"
+
     def has_resource(self) -> bool:
         if self.engine is None:
             return False

@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from ..engine import Engine
 from ..job import Job, LocalJob, ThreadJob, ProcessJob
-from ..job.base import JobEmitError
+from ..job.base import InvalidStateError, JobEmitError
 from .task import TaskTable
 
 
@@ -95,6 +95,23 @@ def create_app() -> FastAPI:
             return job.to_dict()
         except JobEmitError as e:
             return {'error': str(e)}
+
+    @app.get("/job_result/{job_id}")
+    async def wait_job_result(job_id: str):
+        job = engine.jobs.get_job_by_id(job_id)
+        if job is None:
+            return {'error': 'Job not found.'}
+        try:
+            await job.join()
+            return {
+                'job': job.to_dict(),
+                'result': job.result(),
+            }
+        except InvalidStateError:
+            return {
+                'error': 'Job can not fetch result',
+                'job': job.to_dict(),
+            }
 
     return app
 

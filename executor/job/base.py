@@ -37,6 +37,8 @@ class InvalidStateError(ExecutorError):
 
 class Job(ExecutorObj):
 
+    job_type: str = "base"
+
     status = JobStatusAttr()
 
     def __init__(
@@ -124,7 +126,7 @@ class Job(ExecutorObj):
         if self.task is not None:
             return self.task.result()
         else:
-            raise InvalidStateError()
+            raise InvalidStateError(f"{self} is not emitted.")
 
     def to_dict(self):
         return {
@@ -132,10 +134,18 @@ class Job(ExecutorObj):
             'name': self.name,
             'status': self.status,
             'check_time': str(datetime.now()),
+            'job_type': self.job_type,
         }
+
+    async def join(self):
+        if self.task is None:
+            raise InvalidStateError(f"{self} is not emitted.")
+        await self.task
 
 
 class LocalJob(Job):
+    job_type = "local"
+
     async def run(self):
         success = False
         try:

@@ -78,3 +78,28 @@ def test_cancel_and_rerun_job():
     resp = client.get(f"/re_run/{add_id}")
     assert resp.status_code == 200
     assert resp.json()['status'] == "running"
+
+
+@pytest.mark.order(5)
+def test_get_job_result():
+    def mul(x, y):
+        print(x, y)
+        time.sleep(1)
+        print("sleep")
+        return x * y
+    
+    TASK_TABLE.register(mul)
+    resp = client.post(
+        "/call",
+        json={
+            "task_name": "mul",
+            "args": [40, 2],
+            "kwargs": {},
+            "job_type": "local",
+        }
+    )
+    assert resp.status_code == 200
+    job_id = resp.json()['id']
+    resp = client.get(f"/job_result/{job_id}")
+    assert resp.status_code == 200
+    assert resp.json()['result'] == 80

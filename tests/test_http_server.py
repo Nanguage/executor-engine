@@ -22,7 +22,7 @@ def test_register_task():
 
 @pytest.mark.order(1)
 def test_list_tasks():
-    resp = client.get("/task_list")
+    resp = client.get("/tasks")
     assert resp.status_code == 200
     assert 'square' in [
         t['name'] for t in resp.json()

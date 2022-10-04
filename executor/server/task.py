@@ -10,6 +10,9 @@ class Task(object):
             ):
         self.func = func
         self.name = name or func.__name__
+        if not description:
+            if hasattr(func, "__doc__") and (func.__doc__ is not None):
+                description = func.__doc__
         self.description = description
         self.attrs = kwargs
 

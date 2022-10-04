@@ -68,7 +68,7 @@ def create_app() -> FastAPI:
         await engine.submit(job)
         return job.to_dict()
 
-    @app.get("/task_list")
+    @app.get("/tasks")
     async def get_task_list():
         return [t.to_dict() for t in TASK_TABLE.table.values()]
 

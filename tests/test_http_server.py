@@ -83,9 +83,7 @@ def test_cancel_and_rerun_job():
 @pytest.mark.order(5)
 def test_get_job_result():
     def mul(x, y):
-        print(x, y)
         time.sleep(1)
-        print("sleep")
         return x * y
     
     TASK_TABLE.register(mul)

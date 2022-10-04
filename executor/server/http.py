@@ -3,8 +3,8 @@ import typing as T
 import fire
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-
 
 from ..engine import Engine
 from ..job import Job, LocalJob, ThreadJob, ProcessJob
@@ -23,9 +23,26 @@ class CallRequest(BaseModel):
     job_type: T.Literal["local", "thread", "process"]
 
 
+ORIGINS = [
+    "http://127.0.0.1",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5000",
+    "http://localhost",
+]
+
+
 def create_app() -> FastAPI:
     app = FastAPI()
     engine = Engine()
+
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.post("/call")
     async def call(req: CallRequest):
@@ -120,8 +137,11 @@ def run_server(
         host: str = "127.0.0.1",
         port: int = 5000,
         log_level: str = "info",
+        frontend_addr: str = "127.0.0.1:5173",
         **kwargs,
         ):
+    if frontend_addr not in ORIGINS:
+        ORIGINS.append(frontend_addr)
     config = uvicorn.Config(
         "executor.server.http:create_app", factory=True,
         host=host, port=port,

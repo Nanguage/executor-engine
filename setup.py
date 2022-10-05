@@ -38,7 +38,7 @@ def get_long_description():
 
 
 def get_install_requires():
-    requirements = ["fastapi", "uvicorn", "fire", "loky"]
+    requirements = ["fastapi", "uvicorn", "oneface>=0.1.9", "loky"]
     return requirements
 
 

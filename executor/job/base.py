@@ -1,6 +1,5 @@
 import asyncio
 import typing as T
-from queue import Queue
 from datetime import datetime
 
 from ..utils import CheckAttrRange

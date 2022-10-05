@@ -1,4 +1,5 @@
 import typing as T
+from oneface.arg import parse_func_args, Empty
 
 
 class Task(object):
@@ -14,14 +15,34 @@ class Task(object):
             if hasattr(func, "__doc__") and (func.__doc__ is not None):
                 description = func.__doc__
         self.description = description
+        self.func_args = self.get_func_args()
         self.attrs = kwargs
 
     def to_dict(self) -> dict:
         return {
             "name": self.name,
             "description": self.description,
+            "args": self.func_args,
             "attrs": self.attrs,
         }
+
+    def get_func_args(self) -> T.List[dict]:
+        """Return JSON serializable argument information for frontend."""
+        args = []
+        arg_objs = parse_func_args(self.func)
+        for name, o in arg_objs.items():
+            default = None if o.default is Empty else o.default
+            type_name = str(o.type)
+            if hasattr(o.type, "__name__"):
+                type_name = o.type.__name__
+            arg = {
+                "name": name,
+                "type": type_name,
+                "range": o.range,
+                "default": default,
+            }
+            args.append(arg)
+        return args
 
 
 class TaskTable(object):
@@ -35,5 +56,3 @@ class TaskTable(object):
         if not isinstance(task, Task):
             task = Task(task)
         self.table[task.name] = task
-
-

@@ -14,7 +14,7 @@ client = TestClient(app)
 
 @pytest.mark.order(0)
 def test_register_task():
-    def square(x):
+    def square(x: int):
         return x ** 2
 
     TASK_TABLE.register(Task(square, name='square'))
@@ -27,6 +27,13 @@ def test_list_tasks():
     assert 'square' in [
         t['name'] for t in resp.json()
     ]
+    for t in resp.json():
+        if t['name'] == 'square':
+            break
+    assert t['args'][0]['name'] == 'x'
+    assert t['args'][0]['type'] == 'int'
+    assert t['args'][0]['default'] == None
+    assert t['args'][0]['range'] == None
 
 
 @pytest.mark.order(2)

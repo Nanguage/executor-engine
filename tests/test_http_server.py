@@ -3,7 +3,7 @@ import time
 from fastapi.testclient import TestClient
 import pytest
 
-from executor.server.http import create_app, TASK_TABLE
+from executor.server.http import create_app, TASK_TABLE, VALID_JOB_TYPE
 from executor.server.task import Task
 
 app = create_app()
@@ -37,6 +37,13 @@ def test_list_tasks():
 
 
 @pytest.mark.order(2)
+def test_get_valid_job_types():
+    resp = client.get("/valid_job_types")
+    assert resp.status_code == 200
+    assert len(resp.json()) == 2
+
+
+@pytest.mark.order(3)
 def test_call_task():
     resp = client.post(
         "/call",
@@ -51,14 +58,14 @@ def test_call_task():
     assert 'id' in resp.json()
 
 
-@pytest.mark.order(3)
+@pytest.mark.order(4)
 def test_get_all_jobs():
     resp = client.get("/jobs")
     assert resp.status_code == 200
     assert len(resp.json()) == 1
 
 
-@pytest.mark.order(4)
+@pytest.mark.order(5)
 def test_cancel_and_rerun_job():
     def add(x, y):
         time.sleep(1)
@@ -87,13 +94,14 @@ def test_cancel_and_rerun_job():
     assert resp.json()['status'] == "running"
 
 
-@pytest.mark.order(5)
+@pytest.mark.order(6)
 def test_get_job_result():
     def mul(x, y):
         time.sleep(1)
         return x * y
     
     TASK_TABLE.register(mul)
+    VALID_JOB_TYPE.append('local')
     resp = client.post(
         "/call",
         json={

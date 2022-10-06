@@ -13,7 +13,6 @@ from .task import TaskTable
 
 
 TASK_TABLE = TaskTable()
-TASK_TABLE.register(eval)
 
 
 class CallRequest(BaseModel):
@@ -29,6 +28,8 @@ ORIGINS = [
     "http://127.0.0.1:5000",
     "http://localhost",
 ]
+
+VALID_JOB_TYPE = ['thread', 'process']
 
 
 def create_app() -> FastAPI:
@@ -51,6 +52,9 @@ def create_app() -> FastAPI:
             return {"error": "Function not registered."}
 
         job_cls: T.Type["Job"]
+
+        if req.job_type not in VALID_JOB_TYPE:
+            return {"error": f"Not valid job type: {req.job_type}"}
 
         if req.job_type == "local":
             job_cls = LocalJob
@@ -78,6 +82,10 @@ def create_app() -> FastAPI:
             return job.to_dict()
         else:
             return {'error': 'Job not found.'}
+
+    @app.get("/valid_job_types")
+    async def get_valid_job_types():
+        return VALID_JOB_TYPE
 
     @app.get("/jobs")
     async def get_all_jobs():
@@ -137,10 +145,14 @@ def run_server(
         port: int = 5000,
         log_level: str = "info",
         frontend_addr: str = "127.0.0.1:5173",
+        valid_job_type: str = "process,thread",
         **kwargs,
         ):
     if frontend_addr not in ORIGINS:
         ORIGINS.append(frontend_addr)
+    if valid_job_type:
+        global VALID_JOB_TYPE
+        VALID_JOB_TYPE = valid_job_type.split(",")
     config = uvicorn.Config(
         "executor.server.http:create_app", factory=True,
         host=host, port=port,

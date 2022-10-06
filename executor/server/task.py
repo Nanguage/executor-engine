@@ -32,6 +32,8 @@ class Task(object):
         arg_objs = parse_func_args(self.func)
         for name, o in arg_objs.items():
             default = None if o.default is Empty else o.default
+            if o.type is Empty:
+                o.type = str  # set default type to str
             type_name = str(o.type)
             if hasattr(o.type, "__name__"):
                 type_name = o.type.__name__

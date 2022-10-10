@@ -115,7 +115,7 @@ def create_app() -> FastAPI:
         if job is None:
             return {'error': 'Job not found.'}
         try:
-            await job.emit()
+            await job.rerun()
             return job.to_dict()
         except JobEmitError as e:
             return {'error': str(e)}

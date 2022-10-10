@@ -75,15 +75,22 @@ class Job(ExecutorObj):
         return True
 
     async def emit(self) -> asyncio.Task:
-        _valid_status = ("pending", "canceled", "done", "failed")
-        if self.status not in _valid_status:
+        if self.status != 'pending':
             raise JobEmitError(
-                f"{self} is not in valid status({_valid_status})")
+                f"{self} is not in valid status(pending)")
         self.status = "running"
         loop = asyncio.get_running_loop()
         task = loop.create_task(self.run())
         self.task = task
         return task
+
+    async def rerun(self):
+        _valid_status = ("canceled", "done", "failed")
+        if self.status not in _valid_status:
+            raise JobEmitError(
+                f"{self} is not in valid status({_valid_status})")
+        self.status = "pending"
+        await self.engine.submit(self)
 
     async def _on_finish(self, new_status: JobStatusType = "done"):
         self.status = new_status

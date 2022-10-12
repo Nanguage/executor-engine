@@ -1,6 +1,7 @@
 from collections import OrderedDict
 import typing as T
 from dataclasses import dataclass
+from pathlib import Path
 
 from .base import ExecutorObj
 from .job.base import Job
@@ -11,6 +12,7 @@ from .job.utils import valid_job_statuses, JobStatusType
 class EngineSetting:
     max_threads: int = 20
     max_processes: int = 8
+    cache_path: T.Optional[str] = None
 
 
 JobStoreType = T.OrderedDict[str, Job]
@@ -106,3 +108,14 @@ class Engine(ExecutorObj):
         for job in self.jobs.all_jobs():
             if job.task is not None:
                 await job.task
+
+    @property
+    def cache_dir(self) -> Path:
+        _cache_path = self.setting.cache_path
+        if _cache_path is not None:
+            path =  _cache_path
+        else:
+            path = f".executor/{self.id}"
+        path_obj = Path(path)
+        path_obj.mkdir(parents=True, exist_ok=True)
+        return path_obj

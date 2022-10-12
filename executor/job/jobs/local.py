@@ -13,4 +13,4 @@ class LocalJob(Job):
             await self.on_failed(e)
         if success:
             await self.on_done(res)
-        return res
+            return res

@@ -35,9 +35,9 @@ class ThreadJob(Job):
         try:
             result = await loop.run_in_executor(exe, func, *self.args)
             await self.on_done(result)
+            return result
         except Exception as e:
             await self.on_failed(e)
-        return result
 
     def clear_context(self):
         self.executor.shutdown()

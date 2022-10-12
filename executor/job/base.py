@@ -1,12 +1,14 @@
 import asyncio
 import typing as T
 from datetime import datetime
+from pathlib import Path
 
 from ..base import ExecutorObj
 from .utils import (
     JobStatusAttr, JobEmitError, InvalidStateError, JobStatusType,
 )
 from .condition import Condition
+from .capture import CaptureOut
 
 
 if T.TYPE_CHECKING:
@@ -29,6 +31,7 @@ class Job(ExecutorObj):
             name: T.Optional[str] = None,
             condition: T.Optional[Condition] = None,
             time_delta: float = 0.01,
+            redirect_out_err: bool = False,
             **attrs
             ) -> None:
         super().__init__()
@@ -46,6 +49,7 @@ class Job(ExecutorObj):
         if self.condition is not None:
             self.condition.job = self
         self.time_delta = time_delta
+        self.redirect_out_err = redirect_out_err
 
     def __repr__(self) -> str:
         return f"<Job status={self.status} id={self.id[-8:]} func={self.func}>"
@@ -78,7 +82,13 @@ class Job(ExecutorObj):
         while True:
             if self.runnable() and self.consume_resource():
                 self.status = "running"
-                res = await self.run()
+                if self.redirect_out_err:
+                    path_stdout = self.cache_dir / 'stdout.txt'
+                    path_stderr = self.cache_dir / 'stderr.txt'
+                    self.func = CaptureOut(self.func, path_stdout, path_stderr)
+                    res = await self.run()
+                else:
+                    res = await self.run()
                 return res
             else:
                 await asyncio.sleep(self.time_delta)
@@ -143,3 +153,12 @@ class Job(ExecutorObj):
         if self.task is None:
             raise InvalidStateError(f"{self} is not emitted.")
         await self.task
+
+    @property
+    def cache_dir(self) -> T.Optional[Path]:
+        if self.engine is None:
+            return None
+        parent = self.engine.cache_dir
+        path = parent / self.id
+        path.mkdir(parents=True, exist_ok=True)
+        return path

@@ -1,9 +1,13 @@
+import typing as T
 import asyncio
 from datetime import datetime, timedelta
 
 from executor.engine import Engine
 from executor.job import LocalJob, ThreadJob, ProcessJob, Job
 from executor.job.condition import AfterAnother, AfterOthers, AfterTimepoint
+
+
+test_job_cls = [LocalJob, ThreadJob, ProcessJob]
 
 
 def test_submit_job():
@@ -14,8 +18,6 @@ def test_submit_job():
         nonlocal n_run
         n_run += 1
         assert res == 4
-
-    test_job_cls = [LocalJob, ThreadJob, ProcessJob]
 
     async def submit_job():
         for job_cls in test_job_cls:
@@ -29,8 +31,6 @@ def test_submit_job():
 
 def test_get_job_result():
     engine = Engine()
-
-    test_job_cls = [LocalJob, ThreadJob, ProcessJob]
 
     async def submit_job():
         for job_cls in test_job_cls:
@@ -94,5 +94,32 @@ def test_after_timepoint():
         job = ThreadJob(assert_after, condition=AfterTimepoint(t2))
         await engine.submit(job)
         await engine.wait()
+
+    asyncio.run(submit_job())
+
+
+def test_capture_stdout_stderr():
+    engine = Engine()
+
+    def print_hello():
+        print("hello")
+
+    def read_hello(job: Job):
+        with open(job.cache_dir / 'stdout.txt') as f:
+            assert f.read() == "hello\n"
+
+    def on_failed(err):
+        print(err)
+
+    async def submit_job():
+        job_cls: T.Type[Job]
+        for job_cls in test_job_cls:
+            job = job_cls(
+                print_hello, redirect_out_err=True,
+                error_callback=on_failed)
+            await engine.submit(job)
+            await job.join()
+            assert job.status == "done"
+            read_hello(job)
 
     asyncio.run(submit_job())

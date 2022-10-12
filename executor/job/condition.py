@@ -3,7 +3,7 @@ from datetime import datetime
 
 
 if T.TYPE_CHECKING:
-    from .base.job import Job
+    from .base import Job
 
 
 class Condition(object):
@@ -101,13 +101,13 @@ class Combination(Condition):
             c.job = self.job
 
 
-class All(Combination):
+class AllSatisfied(Combination):
     def satisfy(self) -> bool:
         self.pass_job()
         return all([c.satisfy() for c in self.conditions])
 
 
-class Any(Combination):
+class AnySatisfied(Combination):
     def satisfy(self) -> bool:
         self.pass_job()
         return any([c.satisfy() for c in self.conditions])

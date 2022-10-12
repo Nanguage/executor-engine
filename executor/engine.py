@@ -1,7 +1,6 @@
 from collections import OrderedDict
 import typing as T
 from dataclasses import dataclass
-import asyncio
 
 from .base import ExecutorObj
 from .job.base import Job

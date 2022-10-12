@@ -5,7 +5,7 @@ from ..error import ExecutorError
 
 
 if T.TYPE_CHECKING:
-    from .base.job import Job
+    from .base import Job
 
 
 JobStatusType = T.Literal['pending', 'running', 'failed', 'done', 'canceled']

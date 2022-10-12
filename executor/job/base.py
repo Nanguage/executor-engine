@@ -38,7 +38,7 @@ class Job(ExecutorObj):
         self.callback = callback
         self.error_callback = error_callback
         self.engine: T.Optional["Engine"] = None
-        self._status: str = "pending"
+        self._status: str = "created"
         self.name = name or func.__name__
         self.attrs = attrs
         self.task: T.Optional[asyncio.Task] = None
@@ -91,7 +91,6 @@ class Job(ExecutorObj):
         if self.status not in _valid_status:
             raise JobEmitError(
                 f"{self} is not in valid status({_valid_status})")
-        self.status = "pending"
         await self.engine.submit(self)
 
     async def _on_finish(self, new_status: JobStatusType = "done"):

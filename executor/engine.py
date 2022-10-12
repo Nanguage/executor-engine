@@ -93,12 +93,16 @@ class Engine(ExecutorObj):
         self.process_count = setting.max_processes
 
     async def submit(self, job: Job):
-        assert job.status == "pending"
-        job.engine = self
-        self.jobs.add(job)
+        if job.status == "created":
+            job.engine = self
+            job._status = "pending"
+            self.jobs.add(job)
+        else:
+            job.status = "pending"
         await job.emit()
 
     async def wait(self):
+        job: Job
         for job in self.jobs.all_jobs():
             if job.task is not None:
                 await job.task

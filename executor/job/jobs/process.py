@@ -3,7 +3,7 @@ import functools
 
 from loky import get_reusable_executor
 
-from .base import Job
+from ..base import Job
 
 
 class ProcessJob(Job):

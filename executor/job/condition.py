@@ -3,7 +3,7 @@ from datetime import datetime
 
 
 if T.TYPE_CHECKING:
-    from .job import Job
+    from .base.job import Job
 
 
 class Condition(object):

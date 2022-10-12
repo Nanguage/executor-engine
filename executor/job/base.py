@@ -2,7 +2,7 @@ import asyncio
 import typing as T
 from datetime import datetime
 
-from ...base import ExecutorObj
+from ..base import ExecutorObj
 from .utils import (
     JobStatusAttr, JobEmitError, InvalidStateError, JobStatusType,
 )
@@ -10,7 +10,7 @@ from .condition import Condition
 
 
 if T.TYPE_CHECKING:
-    from ...engine import Engine
+    from ..engine import Engine
 
 
 class Job(ExecutorObj):

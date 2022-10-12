@@ -1,4 +1,4 @@
-from .base import Job
+from ..base import Job
 
 
 class LocalJob(Job):

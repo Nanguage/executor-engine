@@ -1,7 +1,7 @@
 from .base import Job
-from .local import LocalJob
-from .thread import ThreadJob
-from .process import ProcessJob
+from .jobs.local import LocalJob
+from .jobs.thread import ThreadJob
+from .jobs.process import ProcessJob
 
 
 __all__ = [

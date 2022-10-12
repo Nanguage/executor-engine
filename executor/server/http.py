@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from ..engine import Engine
 from ..job import Job, LocalJob, ThreadJob, ProcessJob
-from ..job.base.utils import InvalidStateError, JobEmitError
+from ..job.utils import InvalidStateError, JobEmitError
 from .task import TaskTable
 
 

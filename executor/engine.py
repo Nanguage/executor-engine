@@ -5,7 +5,7 @@ import asyncio
 
 from .base import ExecutorObj
 from .job.base import Job
-from .job.base.utils import valid_job_statuses, JobStatusType
+from .job.utils import valid_job_statuses, JobStatusType
 
 
 @dataclass

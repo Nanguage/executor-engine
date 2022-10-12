@@ -1,11 +1,11 @@
 import typing as T
 
-from ...utils import CheckAttrRange
-from ...error import ExecutorError
+from ..utils import CheckAttrRange
+from ..error import ExecutorError
 
 
 if T.TYPE_CHECKING:
-    from .job import Job
+    from .base.job import Job
 
 
 JobStatusType = T.Literal['pending', 'running', 'failed', 'done', 'canceled']

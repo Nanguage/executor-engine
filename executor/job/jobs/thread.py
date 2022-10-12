@@ -2,7 +2,7 @@ import asyncio
 import functools
 from concurrent.futures import ThreadPoolExecutor
 
-from .base import Job
+from ..base import Job
 
 
 class ThreadJob(Job):

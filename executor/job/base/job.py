@@ -2,36 +2,15 @@ import asyncio
 import typing as T
 from datetime import datetime
 
-from ..utils import CheckAttrRange
-from ..error import ExecutorError
-from ..base import ExecutorObj
+from ...base import ExecutorObj
+from .utils import (
+    JobStatusAttr, JobEmitError, InvalidStateError, JobStatusType,
+)
+from .condition import Condition
 
 
 if T.TYPE_CHECKING:
-    from ..engine import Engine
-
-
-JobStatusType = T.Literal['pending', 'running', 'failed', 'done', 'canceled']
-valid_job_statuses = JobStatusType.__args__  # type: ignore
-
-
-class JobStatusAttr(CheckAttrRange):
-    valid_range: T.Iterable[JobStatusType] = valid_job_statuses
-    attr = "_status"
-
-    def __set__(self, obj: "Job", value: JobStatusType):
-        self.check(obj, value)
-        if obj.engine is not None:
-            obj.engine.jobs.move_job_store(obj, value)
-        setattr(obj, self.attr, value)
-
-
-class JobEmitError(ExecutorError):
-    pass
-
-
-class InvalidStateError(ExecutorError):
-    pass
+    from ...engine import Engine
 
 
 class Job(ExecutorObj):
@@ -48,6 +27,8 @@ class Job(ExecutorObj):
             callback: T.Optional[T.Callable[[T.Any], None]] = None,
             error_callback: T.Optional[T.Callable[[Exception], None]] = None,
             name: T.Optional[str] = None,
+            condition: T.Optional[Condition] = None,
+            time_delta: float = 0.01,
             **attrs
             ) -> None:
         super().__init__()
@@ -61,6 +42,10 @@ class Job(ExecutorObj):
         self.name = name or func.__name__
         self.attrs = attrs
         self.task: T.Optional[asyncio.Task] = None
+        self.condition = condition
+        if self.condition is not None:
+            self.condition.job = self
+        self.time_delta = time_delta
 
     def __repr__(self) -> str:
         return f"<Job status={self.status} id={self.id[-8:]} func={self.func}>"
@@ -74,15 +59,32 @@ class Job(ExecutorObj):
     def release_resource(self) -> bool:
         return True
 
+    def runnable(self) -> bool:
+        if self.condition is not None:
+            return self.condition.satisfy() and self.has_resource()
+        else:
+            return self.has_resource()
+
     async def emit(self) -> asyncio.Task:
         if self.status != 'pending':
             raise JobEmitError(
                 f"{self} is not in valid status(pending)")
-        self.status = "running"
         loop = asyncio.get_running_loop()
-        task = loop.create_task(self.run())
+        task = loop.create_task(self.wait_and_run())
         self.task = task
         return task
+
+    async def wait_and_run(self):
+        while True:
+            if self.runnable() and self.consume_resource():
+                self.status = "running"
+                res = await self.run()
+                return res
+            else:
+                await asyncio.sleep(self.time_delta)
+
+    async def run(self):
+        pass
 
     async def rerun(self):
         _valid_status = ("canceled", "done", "failed")
@@ -95,8 +97,6 @@ class Job(ExecutorObj):
     async def _on_finish(self, new_status: JobStatusType = "done"):
         self.status = new_status
         self.release_resource()
-        if self.engine is not None:
-            await self.engine.activate()
 
     async def on_done(self, res):
         if self.callback is not None:
@@ -107,9 +107,6 @@ class Job(ExecutorObj):
         if self.error_callback is not None:
             self.error_callback(e)
         await self._on_finish("failed")
-
-    async def run(self):
-        pass
 
     async def cancel(self):
         self.task.cancel()
@@ -147,18 +144,3 @@ class Job(ExecutorObj):
         if self.task is None:
             raise InvalidStateError(f"{self} is not emitted.")
         await self.task
-
-
-class LocalJob(Job):
-    job_type = "local"
-
-    async def run(self):
-        success = False
-        try:
-            res = self.func(*self.args, **self.kwargs)
-            success = True
-        except Exception as e:
-            await self.on_failed(e)
-        if success:
-            await self.on_done(res)
-        return res

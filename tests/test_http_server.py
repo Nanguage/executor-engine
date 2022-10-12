@@ -82,7 +82,7 @@ def test_cancel_and_rerun_job():
         }
     )
     assert resp.status_code == 200
-    assert resp.json()['status'] == "running"
+    assert resp.json()['status'] == "pending"
     add_id = resp.json()['id']
 
     resp = client.get(f"/cancel/{add_id}")
@@ -91,7 +91,7 @@ def test_cancel_and_rerun_job():
 
     resp = client.get(f"/re_run/{add_id}")
     assert resp.status_code == 200
-    assert resp.json()['status'] == "running"
+    assert resp.json()['status'] == "pending"
 
 
 @pytest.mark.order(6)

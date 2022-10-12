@@ -4,7 +4,8 @@ from dataclasses import dataclass
 import asyncio
 
 from .base import ExecutorObj
-from .job.base import Job, valid_job_statuses, JobStatusType
+from .job.base import Job
+from .job.base.utils import valid_job_statuses, JobStatusType
 
 
 @dataclass
@@ -64,10 +65,12 @@ class Jobs:
         return None
 
     def all_jobs(self):
+        jobs = []
         for status in self.valid_statuses:
             store = self._stores[status]
             for job in store.values():
-                yield job
+                jobs.append(job)
+        return jobs
 
 
 class Engine(ExecutorObj):
@@ -94,16 +97,7 @@ class Engine(ExecutorObj):
         assert job.status == "pending"
         job.engine = self
         self.jobs.add(job)
-        await self.activate()
-
-    async def activate(self):
-        tasks = []
-        for j in self.jobs.pending.values():
-            if j.has_resource() and j.consume_resource():
-                task = asyncio.create_task(j.emit())
-                tasks.append(task)
-                break
-        await asyncio.gather(*tasks)
+        await job.emit()
 
     async def wait(self):
         for job in self.jobs.all_jobs():

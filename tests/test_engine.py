@@ -104,9 +104,16 @@ def test_capture_stdout_stderr():
     def print_hello():
         print("hello")
 
+    def raise_exception():
+        raise ValueError("error")
+
     def read_hello(job: Job):
         with open(job.cache_dir / 'stdout.txt') as f:
             assert f.read() == "hello\n"
+
+    def read_stderr(job: Job):
+        with open(job.cache_dir / 'stderr.txt') as f:
+            assert len(f.read()) > 0
 
     def on_failed(err):
         print(err)
@@ -121,5 +128,13 @@ def test_capture_stdout_stderr():
             await job.join()
             assert job.status == "done"
             read_hello(job)
+
+            job = job_cls(
+                raise_exception, redirect_out_err=True,
+            )
+            await engine.submit(job)
+            await job.join()
+            assert job.status == "failed"
+            read_stderr(job)
 
     asyncio.run(submit_job())

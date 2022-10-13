@@ -17,7 +17,7 @@ classifiers = [
 
 
 keywords = [
-    'Job Management', "Web"
+    'Job Management',
 ]
 
 
@@ -25,7 +25,7 @@ URL = "https://github.com/Nanguage/executor"
 
 
 def get_version():
-    with open("executor/__init__.py") as f:
+    with open("executor/engine/__init__.py") as f:
         for line in f.readlines():
             m = re.match("__version__ = '([^']+)'", line)
             if m:
@@ -38,7 +38,7 @@ def get_long_description():
 
 
 def get_install_requires():
-    requirements = ["fastapi", "uvicorn", "oneface>=0.1.9", "loky"]
+    requirements = ["loky"]
     return requirements
 
 
@@ -46,7 +46,7 @@ requires_test = ['pytest', 'pytest-cov', 'flake8', 'pytest-order', 'mypy']
 
 
 setup(
-    name='sunmao',
+    name='executor-engine',
     author='Weize Xu',
     author_email='vet.xwz@gmail.com',
     version=get_version(),

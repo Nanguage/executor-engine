@@ -12,7 +12,7 @@ from .capture import CaptureOut
 
 
 if T.TYPE_CHECKING:
-    from ..engine import Engine
+    from ..core import Engine
 
 
 class Job(ExecutorObj):

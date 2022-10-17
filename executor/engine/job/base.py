@@ -15,6 +15,13 @@ if T.TYPE_CHECKING:
     from ..core import Engine
 
 
+def format_datetime(t: T.Optional[datetime]) -> T.Optional[str]:
+    if t is None:
+        return None
+    else:
+        return str(t)
+
+
 class Job(ExecutorObj):
 
     job_type: str = "base"
@@ -50,6 +57,9 @@ class Job(ExecutorObj):
             self.condition.job = self
         self.time_delta = time_delta
         self.redirect_out_err = redirect_out_err
+        self.created_time: datetime = datetime.now()
+        self.submit_time: T.Optional[datetime] = None
+        self.stoped_time: T.Optional[datetime] = None
 
     def __repr__(self) -> str:
         return f"<Job status={self.status} id={self.id[-8:]} func={self.func}>"
@@ -145,8 +155,11 @@ class Job(ExecutorObj):
             'id': self.id,
             'name': self.name,
             'status': self.status,
-            'check_time': str(datetime.now()),
             'job_type': self.job_type,
+            'check_time': format_datetime(datetime.now()),
+            'created_time': format_datetime(self.created_time),
+            'submit_time': format_datetime(self.submit_time),
+            'stoped_time': format_datetime(self.stoped_time),
         }
 
     async def join(self):

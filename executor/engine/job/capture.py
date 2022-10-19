@@ -1,8 +1,33 @@
+import sys
 import typing as T
 from functools import update_wrapper
-from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 import traceback
+
+
+class Tee(object):
+    def __init__(
+            self, out_file: T.TextIO,
+            stream: T.Literal['stdout', 'stderr'] = 'stdout'):
+        self.stream_type = stream
+        self.file = out_file
+        self.stream: T.TextIO = getattr(sys, stream)
+
+    def write(self, data):
+        self.stream.write(data)
+        try:
+            self.file.write(data)
+        except ValueError:
+            pass
+
+    def __enter__(self):
+        setattr(sys, self.stream_type, self)
+
+    def __exit__(self, _type, _value, _traceback):
+        setattr(sys, self.stream_type, self.stream)
+
+    def __getattr__(self, name: str) -> T.Any:
+        return getattr(self.stream, name)
 
 
 class CaptureOut(object):
@@ -18,7 +43,7 @@ class CaptureOut(object):
 
     def __call__(self, *args, **kwargs) -> T.Any:
         with open(self.stdout_file, 'w') as fo, open(self.stderr_file, 'w') as fe:
-            with redirect_stdout(fo), redirect_stderr(fe):
+            with Tee(fo, 'stdout'), Tee(fe, 'stderr'):
                 try:
                     res = self.func(*args, **kwargs)
                 except Exception as e:

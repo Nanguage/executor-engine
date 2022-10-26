@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 from executor.engine.core import Engine
 from executor.engine.job import LocalJob, ThreadJob, ProcessJob, Job
-from executor.engine.job.condition import AfterAnother, AfterOthers, AfterTimepoint
+from executor.engine.job.condition import AfterAnother, AfterOthers, AfterTimepoint, AnySatisfied
 
 
 test_job_cls = [LocalJob, ThreadJob, ProcessJob]
@@ -138,3 +138,23 @@ def test_capture_stdout_stderr():
             read_stderr(job)
 
     asyncio.run(submit_job())
+
+
+def test_repr_job():
+    def print_hello():
+        print("hello")
+
+    job_cls: T.Type[Job]
+    for job_cls in test_job_cls:
+        job1 = job_cls(print_hello)
+        str(job1)
+        repr(job1)
+        job1.to_dict()
+        job2 = job_cls(print_hello, condition=AfterAnother(job1.id))
+        str(job2)
+        repr(job2)
+        job2.to_dict()
+        job3 = job_cls(print_hello, condition=AnySatisfied([AfterAnother(job1.id), AfterAnother(job2.id)]))
+        str(job3)
+        repr(job3)
+        job3.to_dict()

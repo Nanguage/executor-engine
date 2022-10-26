@@ -15,13 +15,6 @@ if T.TYPE_CHECKING:
     from ..core import Engine
 
 
-def format_datetime(t: T.Optional[datetime]) -> T.Optional[str]:
-    if t is None:
-        return None
-    else:
-        return str(t)
-
-
 class Job(ExecutorObj):
 
     job_type: str = "base"
@@ -62,7 +55,18 @@ class Job(ExecutorObj):
         self.stoped_time: T.Optional[datetime] = None
 
     def __repr__(self) -> str:
-        return f"<Job status={self.status} id={self.id[-8:]} func={self.func}>"
+        attrs = [
+            f"status={self.status}",
+            f"id={self.id}",
+            f"func={self.func}",
+        ]
+        if self.condition:
+            attrs.append(f" condition={self.condition}")
+        attr_str = " ".join(attrs)
+        return f"<{self.__class__.__name__} {attr_str}/>"
+
+    def __str__(self) -> str:
+        return repr(self)
 
     def has_resource(self) -> bool:
         return True
@@ -151,15 +155,23 @@ class Job(ExecutorObj):
             raise InvalidStateError(f"{self} is not emitted.")
 
     def to_dict(self):
+        if self.condition is not None:
+            cond = self.condition.to_dict()
+        else:
+            cond = None
+
         return {
             'id': self.id,
             'name': self.name,
+            'args': self.args,
+            'kwargs': self.kwargs,
+            'condition': cond,
             'status': self.status,
             'job_type': self.job_type,
-            'check_time': format_datetime(datetime.now()),
-            'created_time': format_datetime(self.created_time),
-            'submit_time': format_datetime(self.submit_time),
-            'stoped_time': format_datetime(self.stoped_time),
+            'check_time': datetime.now(),
+            'created_time': self.created_time,
+            'submit_time': self.submit_time,
+            'stoped_time': self.stoped_time,
         }
 
     async def join(self):

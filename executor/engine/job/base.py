@@ -2,6 +2,9 @@ import asyncio
 import typing as T
 from datetime import datetime
 from pathlib import Path
+from copy import copy
+
+import cloudpickle
 
 from ..base import ExecutorObj
 from .utils import (
@@ -53,6 +56,7 @@ class Job(ExecutorObj):
         self.created_time: datetime = datetime.now()
         self.submit_time: T.Optional[datetime] = None
         self.stoped_time: T.Optional[datetime] = None
+        self.executor = None
 
     def __repr__(self) -> str:
         attrs = [
@@ -154,7 +158,7 @@ class Job(ExecutorObj):
         else:
             raise InvalidStateError(f"{self} is not emitted.")
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         if self.condition is not None:
             cond = self.condition.to_dict()
         else:
@@ -173,6 +177,27 @@ class Job(ExecutorObj):
             'submit_time': self.submit_time,
             'stoped_time': self.stoped_time,
         }
+
+    def serialization(self) -> bytes:
+        job = copy(self)
+        job.task = None
+        job.engine = None
+        job.executor = None
+        if job.condition is not None:
+            condition = copy(job.condition)
+            condition.job = job
+            job.condition = condition
+        try:
+            bytes_ = cloudpickle.dumps(job)
+        except:
+            import ipdb; ipdb.set_trace()
+        return bytes_
+
+    @staticmethod
+    def deserialization(bytes_: bytes, engine: "Engine") -> "Job":
+        job: "Job" = cloudpickle.loads(bytes_)
+        job.engine = engine
+        return job
 
     async def join(self):
         if self.task is None:

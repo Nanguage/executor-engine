@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .base import ExecutorObj
 from .job.base import Job
-from .jobs import Jobs
+from .manager import Jobs
 
 
 @dataclass

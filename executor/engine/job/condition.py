@@ -1,6 +1,7 @@
 import inspect
 import typing as T
 from datetime import datetime
+from copy import copy
 
 
 if T.TYPE_CHECKING:
@@ -10,6 +11,12 @@ if T.TYPE_CHECKING:
 class Condition(object):
     def __init__(self):
         self.job: T.Optional["Job"] = None
+
+    def set_job(self, job: T.Optional["Job"]):
+        self.job = job
+
+    def copy(self) -> "Condition":
+        return copy(self)
 
     def satisfy(self) -> bool:
         return True
@@ -114,9 +121,14 @@ class Combination(Condition):
         super().__init__()
         self.conditions = conditions
 
-    def pass_job(self):
+    def set_job(self, job: T.Optional["Job"]):
         for c in self.conditions:
-            c.job = self.job
+            c.set_job(job)
+
+    def copy(self) -> "Combination":
+        cpy = copy(self)
+        cpy.conditions = [copy(c) for c in cpy.conditions]
+        return cpy
 
     def to_dict(self):
         return {
@@ -131,11 +143,9 @@ class Combination(Condition):
 
 class AllSatisfied(Combination):
     def satisfy(self) -> bool:
-        self.pass_job()
         return all([c.satisfy() for c in self.conditions])
 
 
 class AnySatisfied(Combination):
     def satisfy(self) -> bool:
-        self.pass_job()
         return any([c.satisfy() for c in self.conditions])

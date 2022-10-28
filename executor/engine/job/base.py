@@ -2,7 +2,7 @@ import asyncio
 import typing as T
 from datetime import datetime
 from pathlib import Path
-from copy import copy
+from copy import copy, deepcopy
 
 import cloudpickle
 
@@ -50,7 +50,7 @@ class Job(ExecutorObj):
         self.task: T.Optional[asyncio.Task] = None
         self.condition = condition
         if self.condition is not None:
-            self.condition.job = self
+            self.condition.set_job(self)
         self.time_delta = time_delta
         self.redirect_out_err = redirect_out_err
         self.created_time: datetime = datetime.now()
@@ -184,8 +184,8 @@ class Job(ExecutorObj):
         job.engine = None
         job.executor = None
         if job.condition is not None:
-            condition = copy(job.condition)
-            condition.job = job
+            condition = job.condition.copy()
+            condition.set_job(None)
             job.condition = condition
         try:
             bytes_ = cloudpickle.dumps(job)
@@ -196,6 +196,8 @@ class Job(ExecutorObj):
     @staticmethod
     def deserialization(bytes_: bytes) -> "Job":
         job: "Job" = cloudpickle.loads(bytes_)
+        if job.condition is not None:
+            job.condition.set_job(job)
         return job
 
     async def join(self):

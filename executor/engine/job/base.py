@@ -2,7 +2,7 @@ import asyncio
 import typing as T
 from datetime import datetime
 from pathlib import Path
-from copy import copy, deepcopy
+from copy import copy
 
 import cloudpickle
 
@@ -91,6 +91,7 @@ class Job(ExecutorObj):
         if self.status != 'pending':
             raise JobEmitError(
                 f"{self} is not in valid status(pending)")
+        self.submit_time = datetime.now()
         loop = asyncio.get_running_loop()
         task = loop.create_task(self.wait_and_run())
         self.task = task
@@ -187,10 +188,7 @@ class Job(ExecutorObj):
             condition = job.condition.copy()
             condition.set_job(None)
             job.condition = condition
-        try:
-            bytes_ = cloudpickle.dumps(job)
-        except:
-            import ipdb; ipdb.set_trace()
+        bytes_ = cloudpickle.dumps(job)
         return bytes_
 
     @staticmethod

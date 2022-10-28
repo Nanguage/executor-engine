@@ -20,20 +20,31 @@ class JobStore():
         self.mem: T.Dict[str, Job] = dict()
 
     @classmethod
-    def load_from_cache(cls, path: Path, engine: "Engine"):
+    def load_from_cache(cls, path: Path):
         store = cls(path)
-        job: Job
-        for key in store.cache:
-            bytes_ = store.cache[key]
-            job = Job.deserialization(bytes_, engine)
-            store.mem[key] = job
+        store.update_from_cache()
         return store
+
+    def update_from_cache(self, clear_old=False):
+        if clear_old:
+            self.mem.clear()
+        for key in self.cache:
+            job = self.get_from_cache(key)
+            self.mem[key] = job
+
+    def get_from_cache(self, key: str) -> Job:
+        bytes_ = self.cache[key]
+        job = Job.deserialization(bytes_)
+        return job
+
+    def set_to_cache(self, key: str, val: Job):
+        bytes_ = val.serialization()
+        self.cache[key] = bytes_
 
     def __setitem__(self, key: str, val: Job):
         self.mem[key] = val
         if self.cache is not None:
-            bytes_ = val.serialization()
-            self.cache[key] = bytes_
+            self.set_to_cache(key, val)
 
     def __getitem__(self, key: str) -> Job:
         return self.mem[key]
@@ -76,9 +87,16 @@ class Jobs:
         s: str
         for s in self.valid_statuses:
             path = cache_path / s
-            store = JobStore(path)
+            if path.exists():
+                store = JobStore.load_from_cache(path)
+            else:
+                store = JobStore(path)
             self._stores[s] = store
         self.set_attrs_for_read()
+
+    def update_from_cache(self, clear_old=True):
+        for store in self._stores.values():
+            store.update_from_cache(clear_old=clear_old)
 
     def set_attrs_for_read(self):
         self.pending = self._stores['pending']
@@ -86,6 +104,10 @@ class Jobs:
         self.done = self._stores['done']
         self.failed = self._stores['failed']
         self.canceled = self._stores['canceled']
+
+    def set_engine(self, engine: "Engine"):
+        for job in self.all_jobs():
+            job.engine = engine
 
     def clear(self, statuses: T.List[JobStatusType]):
         for s in statuses:
@@ -107,7 +129,7 @@ class Jobs:
             if job.id in store:
                 store.pop(job.id)
 
-    def move_job_store(self, job: "Job", new_status: JobStatusType):
+    def move_job_store(self, job: Job, new_status: JobStatusType):
         if job.status == new_status:
             return
         old_store = self._stores[job.status]
@@ -121,7 +143,7 @@ class Jobs:
                 return store[job_id]
         return None
 
-    def all_jobs(self):
+    def all_jobs(self) -> T.List[Job]:
         jobs = []
         for status in self.valid_statuses:
             store = self._stores[status]

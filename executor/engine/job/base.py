@@ -194,9 +194,8 @@ class Job(ExecutorObj):
         return bytes_
 
     @staticmethod
-    def deserialization(bytes_: bytes, engine: "Engine") -> "Job":
+    def deserialization(bytes_: bytes) -> "Job":
         job: "Job" = cloudpickle.loads(bytes_)
-        job.engine = engine
         return job
 
     async def join(self):

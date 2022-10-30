@@ -39,15 +39,6 @@ class Condition(object):
     def __repr__(self):
         return str(self)
 
-    def to_dict(self):
-        return {
-            'type': self.__class__.__name__,
-            'arguments': {
-                a: getattr(self, a)
-                for a in self.get_attrs_for_init()
-            }
-        }
-
 
 class AfterAnother(Condition):
     def __init__(
@@ -129,16 +120,6 @@ class Combination(Condition):
         cpy = copy(self)
         cpy.conditions = [copy(c) for c in cpy.conditions]
         return cpy
-
-    def to_dict(self):
-        return {
-            'type': self.__class__.__name__,
-            'arguments': {
-                'conditions': [
-                    c.to_dict for c in self.conditions
-                ]
-            }
-        }
 
 
 class AllSatisfied(Combination):

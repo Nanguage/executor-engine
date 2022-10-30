@@ -159,26 +159,6 @@ class Job(ExecutorObj):
         else:
             raise InvalidStateError(f"{self} is not emitted.")
 
-    def to_dict(self) -> dict:
-        if self.condition is not None:
-            cond = self.condition.to_dict()
-        else:
-            cond = None
-
-        return {
-            'id': self.id,
-            'name': self.name,
-            'args': self.args,
-            'kwargs': self.kwargs,
-            'condition': cond,
-            'status': self.status,
-            'job_type': self.job_type,
-            'check_time': datetime.now(),
-            'created_time': self.created_time,
-            'submit_time': self.submit_time,
-            'stoped_time': self.stoped_time,
-        }
-
     def serialization(self) -> bytes:
         job = copy(self)
         job.task = None

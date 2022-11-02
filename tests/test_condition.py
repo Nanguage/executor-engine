@@ -18,8 +18,8 @@ def test_after_another_cond():
 
     async def submit_job():
         job1 = LocalJob(id_func, (1,), callback=append)
-        job2 = ThreadJob(id_func, (2,), callback=append, condition=AfterAnother(job1.id))
-        job3 = ProcessJob(id_func, (3,), callback=append, condition=AfterAnother(job2.id))
+        job2 = ThreadJob(id_func, (2,), callback=append, condition=AfterAnother(job_id=job1.id))
+        job3 = ProcessJob(id_func, (3,), callback=append, condition=AfterAnother(job_id=job2.id))
         await engine.submit(job3)
         await engine.submit(job2)
         await engine.submit(job1)
@@ -40,7 +40,7 @@ def test_after_others():
         def has_1_2():
             assert 1 in s
             assert 2 in s
-        job3 = ThreadJob(has_1_2, condition=AfterOthers([job1.id, job2.id]))
+        job3 = ThreadJob(has_1_2, condition=AfterOthers(job_ids=[job1.id, job2.id]))
         await engine.submit(job3)
         await engine.submit(job2)
         await engine.submit(job1)
@@ -58,7 +58,7 @@ def test_after_timepoint():
         t2 = t1 + d1
         def assert_after():
             assert datetime.now() > t2
-        job = ThreadJob(assert_after, condition=AfterTimepoint(t2))
+        job = ThreadJob(assert_after, condition=AfterTimepoint(timepoint=t2))
         await engine.submit(job)
         await engine.wait()
 
@@ -75,9 +75,9 @@ def test_any_satisfy():
         job2 = ThreadJob(lambda: s.add(2))
         def has_one_element():
             assert len(s) == 1
-        job3 = ThreadJob(has_one_element, condition=AnySatisfied([
-            AfterAnother(job1.id),
-            AfterAnother(job2.id)
+        job3 = ThreadJob(has_one_element, condition=AnySatisfied(conditions=[
+            AfterAnother(job_id=job1.id),
+            AfterAnother(job_id=job2.id)
         ]))
         await engine.submit(job3)
         await engine.submit(job2)

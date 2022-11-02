@@ -1,59 +1,24 @@
-import inspect
 import typing as T
 from datetime import datetime
-from copy import copy
 
+from pydantic import BaseModel
+
+from .utils import JobStatusType
 
 if T.TYPE_CHECKING:
-    from .base import Job
+    from ..core import Engine
 
 
-class Condition(object):
-    def __init__(self):
-        self.job: T.Optional["Job"] = None
-
-    def set_job(self, job: T.Optional["Job"]):
-        self.job = job
-
-    def copy(self) -> "Condition":
-        return copy(self)
-
-    def satisfy(self) -> bool:
+class Condition(BaseModel):
+    def satisfy(self, engine: "Engine") -> bool:
         return True
-
-    def get_attrs_for_init(self) -> T.List[str]:
-        init_mth = getattr(self, '__init__')
-        sig = inspect.signature(init_mth)
-        attr_names = [n for n in sig.parameters.keys()]
-        return attr_names
-
-    def __str__(self):
-        cls_name = self.__class__.__name__
-        attr_strs = " ".join([
-            f"{a}={getattr(self, a)}"
-            for a in self.get_attrs_for_init()
-        ])
-        s = f"<{cls_name} {attr_strs}>"
-        return s
-
-    def __repr__(self):
-        return str(self)
 
 
 class AfterAnother(Condition):
-    def __init__(
-            self,
-            job_id: str,
-            status: str = "done"):
-        super().__init__()
-        self.job_id = job_id
-        self.status = status
+    job_id: str
+    status: JobStatusType = "done"
 
-    def satisfy(self) -> bool:
-        job = self.job
-        assert job is not None
-        engine = job.engine
-        assert engine is not None
+    def satisfy(self, engine):
         another = engine.jobs.get_job_by_id(
             self.job_id)
         if another is None:
@@ -66,21 +31,11 @@ class AfterAnother(Condition):
 
 
 class AfterOthers(Condition):
-    def __init__(self,
-            job_ids: T.List[str],
-            mode: T.Literal['all', 'any'] = 'all',
-            status: str = "done"):
-        super().__init__()
-        assert mode in ('all', 'any')
-        self.job_ids = job_ids
-        self.mode = mode
-        self.status = status
+    job_ids: T.List[str]
+    status: JobStatusType = "done"
+    mode: T.Literal['all', 'any'] = "all"
 
-    def satisfy(self) -> bool:
-        job = self.job
-        assert job is not None
-        engine = job.engine
-        assert engine is not None
+    def satisfy(self, engine):
         other_job_satisfy = []
         for id_ in self.job_ids:
             job = engine.jobs.get_job_by_id(id_)
@@ -95,12 +50,9 @@ class AfterOthers(Condition):
 
 
 class AfterTimepoint(Condition):
-    def __init__(self, timepoint: datetime):
-        super().__init__()
-        assert isinstance(timepoint, datetime)
-        self.timepoint = timepoint
+    timepoint: datetime
 
-    def satisfy(self) -> bool:
+    def satisfy(self, engine):
         if datetime.now() > self.timepoint:
             return True
         else:
@@ -108,25 +60,14 @@ class AfterTimepoint(Condition):
 
 
 class Combination(Condition):
-    def __init__(self, conditions: T.List[Condition]):
-        super().__init__()
-        self.conditions = conditions
-
-    def set_job(self, job: T.Optional["Job"]):
-        for c in self.conditions:
-            c.set_job(job)
-
-    def copy(self) -> "Combination":
-        cpy = copy(self)
-        cpy.conditions = [copy(c) for c in cpy.conditions]
-        return cpy
+    conditions: T.List[Condition]
 
 
 class AllSatisfied(Combination):
-    def satisfy(self) -> bool:
-        return all([c.satisfy() for c in self.conditions])
+    def satisfy(self, engine):
+        return all([c.satisfy(engine) for c in self.conditions])
 
 
 class AnySatisfied(Combination):
-    def satisfy(self) -> bool:
-        return any([c.satisfy() for c in self.conditions])
+    def satisfy(self, engine):
+        return any([c.satisfy(engine) for c in self.conditions])

@@ -38,7 +38,7 @@ def get_long_description():
 
 
 def get_install_requires():
-    requirements = ["loky", "diskcache", "cloudpickle"]
+    requirements = ["loky", "diskcache", "cloudpickle", "pydantic"]
     return requirements
 
 

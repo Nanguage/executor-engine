@@ -49,8 +49,6 @@ class Job(ExecutorObj):
         self.attrs = attrs
         self.task: T.Optional[asyncio.Task] = None
         self.condition = condition
-        if self.condition is not None:
-            self.condition.set_job(self)
         self.time_delta = time_delta
         self.redirect_out_err = redirect_out_err
         self.created_time: datetime = datetime.now()
@@ -82,8 +80,10 @@ class Job(ExecutorObj):
         return True
 
     def runnable(self) -> bool:
+        if self.engine is None:
+            return False
         if self.condition is not None:
-            return self.condition.satisfy() and self.has_resource()
+            return self.condition.satisfy(self.engine) and self.has_resource()
         else:
             return self.has_resource()
 
@@ -164,18 +164,12 @@ class Job(ExecutorObj):
         job.task = None
         job.engine = None
         job.executor = None
-        if job.condition is not None:
-            condition = job.condition.copy()
-            condition.set_job(None)
-            job.condition = condition
         bytes_ = cloudpickle.dumps(job)
         return bytes_
 
     @staticmethod
     def deserialization(bytes_: bytes) -> "Job":
         job: "Job" = cloudpickle.loads(bytes_)
-        if job.condition is not None:
-            job.condition.set_job(job)
         return job
 
     async def join(self):

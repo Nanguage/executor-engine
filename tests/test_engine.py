@@ -92,9 +92,10 @@ def test_repr_job():
         job1 = job_cls(print_hello)
         str(job1)
         repr(job1)
-        job2 = job_cls(print_hello, condition=AfterAnother(job1.id))
+        job2 = job_cls(print_hello, condition=AfterAnother(job_id=job1.id))
         str(job2)
         repr(job2)
-        job3 = job_cls(print_hello, condition=AnySatisfied([AfterAnother(job1.id), AfterAnother(job2.id)]))
+        job3 = job_cls(print_hello, condition=AnySatisfied(
+            conditions=[AfterAnother(job_id=job1.id), AfterAnother(job_id=job2.id)]))
         str(job3)
         repr(job3)

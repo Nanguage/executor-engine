@@ -39,6 +39,10 @@ class ThreadJob(Job):
         except Exception as e:
             await self.on_failed(e)
 
+    async def cancel(self):
+        self.executor.shutdown()
+        await super().cancel()
+
     def clear_context(self):
         self.executor.shutdown()
         del self.executor

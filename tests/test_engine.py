@@ -41,6 +41,44 @@ def test_get_job_result():
     asyncio.run(submit_job())
 
 
+def test_cancel_job():
+    engine = Engine()
+
+    def run_forever():
+        while True:
+            1 + 1
+
+    async def submit_job():
+        for job_cls in [ProcessJob]:
+            job: Job = job_cls(run_forever)
+            await engine.submit(job)
+            await asyncio.sleep(0.1)
+            await job.cancel()
+            assert job.status == "canceled"
+            await job.rerun()
+            await asyncio.sleep(0.1)
+            assert job.status == "running"
+            await job.cancel()
+
+    asyncio.run(submit_job())
+
+
+def test_re_run_job():
+    engine = Engine()
+
+    async def submit_job():
+        for job_cls in test_job_cls:
+            job: Job = job_cls(lambda x: x**2, (2,))
+            await engine.submit(job)
+            await job.join()
+            assert job.status == "done"
+            await job.rerun()
+            await job.join()
+            assert job.status == "done"
+
+    asyncio.run(submit_job())
+
+
 def test_capture_stdout_stderr():
     engine = Engine()
 

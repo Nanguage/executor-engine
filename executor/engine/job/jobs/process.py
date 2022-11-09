@@ -34,12 +34,17 @@ class ProcessJob(Job):
         loop = asyncio.get_running_loop()
         func = functools.partial(self.func, **self.kwargs)
         try:
-            result = await loop.run_in_executor(executor, func, *self.args)
+            fut = loop.run_in_executor(executor, func, *self.args)
+            result = await fut
             await self.on_done(result)
             return result
         except Exception as e:
             await self.on_failed(e)
 
+    async def cancel(self):
+        self.executor.shutdown(wait=True, kill_workers=True)
+        await super().cancel()
+
     def clear_context(self):
-        self.executor.shutdown()
+        self.executor.shutdown(wait=True, kill_workers=True)
         del self.executor

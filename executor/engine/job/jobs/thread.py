@@ -40,7 +40,8 @@ class ThreadJob(Job):
             await self.on_failed(e)
 
     async def cancel(self):
-        self.executor.shutdown()
+        if self.status == "running":
+            self.executor.shutdown()
         await super().cancel()
 
     def clear_context(self):

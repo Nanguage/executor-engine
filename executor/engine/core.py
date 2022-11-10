@@ -44,6 +44,11 @@ class Engine(ExecutorObj):
             job.status = "pending"
         await job.emit()
 
+    async def remove(self, job: Job):
+        if job.status in ('running', 'pending'):
+            await job.cancel()
+        self.jobs.remove(job)
+
     async def wait(self):
         job: Job
         for job in self.jobs.all_jobs():

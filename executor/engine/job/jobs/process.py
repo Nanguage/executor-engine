@@ -42,7 +42,8 @@ class ProcessJob(Job):
             await self.on_failed(e)
 
     async def cancel(self):
-        self.executor.shutdown(wait=True, kill_workers=True)
+        if self.status == "running":
+            self.executor.shutdown(wait=True, kill_workers=True)
         await super().cancel()
 
     def clear_context(self):

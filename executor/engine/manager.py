@@ -143,6 +143,13 @@ class Jobs:
                 return store[job_id]
         return None
 
+    def __contains__(self, job: T.Union[str, Job]):
+        if isinstance(job, Job):
+            job_id = job.id
+        else:
+            job_id = job
+        return self.get_job_by_id(job_id) is not None
+
     def all_jobs(self) -> T.List[Job]:
         jobs = []
         for status in self.valid_statuses:

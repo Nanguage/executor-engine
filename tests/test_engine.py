@@ -1,3 +1,4 @@
+import time
 import typing as T
 import asyncio
 
@@ -51,13 +52,19 @@ def test_cancel_job():
     async def submit_job():
         for job_cls in [ProcessJob]:
             job: Job = job_cls(run_forever)
+            # cancel running
             await engine.submit(job)
             await asyncio.sleep(0.1)
             await job.cancel()
             assert job.status == "canceled"
+            # cancel after re-run
             await job.rerun()
             await asyncio.sleep(0.1)
             assert job.status == "running"
+            await job.cancel()
+            # cancel pending
+            await job.rerun()
+            assert job.status == "pending"
             await job.cancel()
 
     asyncio.run(submit_job())
@@ -75,6 +82,35 @@ def test_re_run_job():
             await job.rerun()
             await job.join()
             assert job.status == "done"
+
+    asyncio.run(submit_job())
+
+
+def test_delete_job():
+    engine = Engine()
+
+    def sleep_1s():
+        time.sleep(1)
+
+    async def submit_job():
+        for job_cls in test_job_cls:
+            # remove pending job
+            job: Job = job_cls(lambda x: x**2, (2,))
+            await engine.submit(job)
+            assert job in engine.jobs
+            assert job.status == "pending"
+            await engine.remove(job)
+            assert job not in engine.jobs
+
+        for job_cls in [ThreadJob, ProcessJob]:
+            # remove running job
+            job: Job = job_cls(sleep_1s)
+            await engine.submit(job)
+            assert job in engine.jobs
+            await asyncio.sleep(0.1)
+            assert job.status == "running"
+            await engine.remove(job)
+            assert job not in engine.jobs
 
     asyncio.run(submit_job())
 

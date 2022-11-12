@@ -1,6 +1,6 @@
+import os
 import copy
 import shlex
-import asyncio
 import typing as T
 import subprocess as subp
 
@@ -12,7 +12,8 @@ from ...utils import ProcessRunner
 class SubprocessJob(ProcessJob):
     def __init__(
             self,
-            cmd: str,
+            cmd: str, record_cmd: bool = True,
+            change_dir: bool = True,
             callback: T.Optional[T.Callable[[T.Any], None]] = None,
             error_callback: T.Optional[T.Callable[[Exception], None]] = None,
             name: T.Optional[str] = None,
@@ -22,6 +23,8 @@ class SubprocessJob(ProcessJob):
             **attrs
             ) -> None:
         self.cmd = cmd
+        self.record_cmd = record_cmd
+        self.change_dir = change_dir
         if name is None:
             name = cmd.split()[0]
         super().__init__(
@@ -48,10 +51,21 @@ class SubprocessJob(ProcessJob):
 
     def process_func(self):
         cmd = copy.copy(self.cmd)
+        record_cmd = copy.copy(self.record_cmd)
+        change_dir = copy.copy(self.change_dir)
+
+        cache_dir = self.cache_dir.resolve()
+        path_sh = cache_dir / 'command.sh'
+        work_dir = cache_dir.resolve()
+
+        def record_command():
+            with open(path_sh, 'w') as f:
+                f.write(cmd + "\n")
+
         if self.redirect_out_err:
-            path_stdout = self.cache_dir / 'stdout.txt'
-            path_stderr = self.cache_dir / 'stderr.txt'
-            def func():
+            path_stdout = cache_dir / 'stdout.txt'
+            path_stderr = cache_dir / 'stderr.txt'
+            def run_cmd():
                 runner = ProcessRunner(cmd)
                 runner.run()
                 g = runner.stream()
@@ -68,8 +82,16 @@ class SubprocessJob(ProcessJob):
                             break
                 return retcode
         else:
-            def func():
+            def run_cmd():
                 p = subp.Popen(shlex.split(cmd))
                 retcode = p.wait()
                 return retcode
+
+        def func():
+            if record_cmd:
+                record_command()
+            if change_dir:
+                os.chdir(work_dir)
+            retcode = run_cmd()
+            return retcode
         self.func = func

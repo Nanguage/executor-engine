@@ -40,3 +40,18 @@ def test_capture_stdout_stderr():
             assert len(f.read()) > 0
 
     asyncio.run(submit_job())
+
+
+def test_record_command():
+    engine = Engine()
+
+    async def submit_job():
+        cmd = "python -c 'print(1 + 1)'"
+        job = SubprocessJob(cmd, record_cmd=True, error_callback=lambda err: print(err))
+        await engine.submit(job)
+        await job.join()
+        assert job.result() == 0
+        with open(job.cache_dir / "command.sh") as f:
+            assert f.read() == cmd + "\n"
+
+    asyncio.run(submit_job())

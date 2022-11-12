@@ -39,7 +39,7 @@ class SubprocessJob(ProcessJob):
                             if src == 'stdout':
                                 fo.write(line.rstrip("\n"))
                             else:
-                                fe.write(line.rsplit("\n"))
+                                fe.write(line.rstrip("\n"))
                         except StopIteration as e:
                             retcode = e.value
                             break
@@ -47,7 +47,8 @@ class SubprocessJob(ProcessJob):
         else:
             def func():
                 p = subp.Popen(shlex.split(cmd))
-                return p.wait()
+                retcode = p.wait()
+                return retcode
         self.func = func
         while True:
             if self.runnable() and self.consume_resource():

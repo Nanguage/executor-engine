@@ -1,16 +1,39 @@
-import asyncio
-import subprocess as subp
-import shlex
 import copy
+import shlex
+import asyncio
+import typing as T
+import subprocess as subp
 
+from ..condition import Condition
 from ..jobs.process import ProcessJob
 from ...utils import ProcessRunner
 
 
 class SubprocessJob(ProcessJob):
-    def __init__(self, cmd: str, **kwargs):
+    def __init__(
+            self,
+            cmd: str,
+            callback: T.Optional[T.Callable[[T.Any], None]] = None,
+            error_callback: T.Optional[T.Callable[[Exception], None]] = None,
+            name: T.Optional[str] = None,
+            condition: T.Optional[Condition] = None,
+            time_delta: float = 0.01,
+            redirect_out_err: bool = False,
+            **attrs
+            ) -> None:
         self.cmd = cmd
-        super().__init__(lambda x: x, **kwargs)
+        if name is None:
+            name = cmd.split()[0]
+        super().__init__(
+            lambda x: x,
+            callback=callback,
+            error_callback=error_callback,
+            name=name,
+            condition=condition,
+            time_delta=time_delta,
+            redirect_out_err=redirect_out_err,
+            **attrs
+        )
 
     def __repr__(self) -> str:
         attrs = [
@@ -23,7 +46,7 @@ class SubprocessJob(ProcessJob):
         attr_str = " ".join(attrs)
         return f"<{self.__class__.__name__} {attr_str}/>"
 
-    async def wait_and_run(self):
+    def process_func(self):
         cmd = copy.copy(self.cmd)
         if self.redirect_out_err:
             path_stdout = self.cache_dir / 'stdout.txt'
@@ -50,10 +73,3 @@ class SubprocessJob(ProcessJob):
                 retcode = p.wait()
                 return retcode
         self.func = func
-        while True:
-            if self.runnable() and self.consume_resource():
-                self.status = "running"
-                res = await self.run()
-                return res
-            else:
-                await asyncio.sleep(self.time_delta)

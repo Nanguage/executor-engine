@@ -95,17 +95,18 @@ class Job(ExecutorObj):
         self.task = task
         return task
 
+    def process_func(self):
+        if self.redirect_out_err and (not isinstance(self.func, CaptureOut)):
+            path_stdout = self.cache_dir / 'stdout.txt'
+            path_stderr = self.cache_dir / 'stderr.txt'
+            self.func = CaptureOut(self.func, path_stdout, path_stderr)
+
     async def wait_and_run(self):
+        self.process_func()
         while True:
             if self.runnable() and self.consume_resource():
                 self.status = "running"
-                if self.redirect_out_err:
-                    path_stdout = self.cache_dir / 'stdout.txt'
-                    path_stderr = self.cache_dir / 'stderr.txt'
-                    self.func = CaptureOut(self.func, path_stdout, path_stderr)
-                    res = await self.run()
-                else:
-                    res = await self.run()
+                res = await self.run()
                 return res
             else:
                 await asyncio.sleep(self.time_delta)

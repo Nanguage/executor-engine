@@ -2,8 +2,6 @@ from ..base import Job
 
 
 class LocalJob(Job):
-    job_type = "local"
-
     async def run(self):
         success = False
         try:

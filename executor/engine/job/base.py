@@ -20,8 +20,6 @@ if T.TYPE_CHECKING:
 
 class Job(ExecutorObj):
 
-    job_type: str = "base"
-
     status = JobStatusAttr()
 
     def __init__(

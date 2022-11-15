@@ -13,18 +13,17 @@ class SubprocessJob(ProcessJob):
     def __init__(
             self,
             cmd: str, record_cmd: bool = True,
-            change_dir: bool = True,
             callback: T.Optional[T.Callable[[T.Any], None]] = None,
             error_callback: T.Optional[T.Callable[[Exception], None]] = None,
             name: T.Optional[str] = None,
             condition: T.Optional[Condition] = None,
             time_delta: float = 0.01,
             redirect_out_err: bool = False,
+            change_dir: bool = True,
             **attrs
             ) -> None:
         self.cmd = cmd
         self.record_cmd = record_cmd
-        self.change_dir = change_dir
         if name is None:
             name = cmd.split()[0]
         super().__init__(
@@ -35,6 +34,7 @@ class SubprocessJob(ProcessJob):
             condition=condition,
             time_delta=time_delta,
             redirect_out_err=redirect_out_err,
+            change_dir=change_dir,
             **attrs
         )
 

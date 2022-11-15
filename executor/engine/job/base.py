@@ -11,7 +11,8 @@ from .utils import (
     JobStatusAttr, JobEmitError, InvalidStateError, JobStatusType,
 )
 from .condition import Condition
-from .capture import CaptureOut
+from ..middle.capture import CaptureOut
+from ..middle.dir import ChDir
 
 
 if T.TYPE_CHECKING:
@@ -33,6 +34,7 @@ class Job(ExecutorObj):
             condition: T.Optional[Condition] = None,
             time_delta: float = 0.01,
             redirect_out_err: bool = False,
+            change_dir: bool = False,
             **attrs
             ) -> None:
         super().__init__()
@@ -49,6 +51,7 @@ class Job(ExecutorObj):
         self.condition = condition
         self.time_delta = time_delta
         self.redirect_out_err = redirect_out_err
+        self.change_dir = change_dir
         self.created_time: datetime = datetime.now()
         self.submit_time: T.Optional[datetime] = None
         self.stoped_time: T.Optional[datetime] = None
@@ -96,10 +99,13 @@ class Job(ExecutorObj):
         return task
 
     def process_func(self):
+        cache_dir = self.cache_dir.resolve()
         if self.redirect_out_err and (not isinstance(self.func, CaptureOut)):
-            path_stdout = self.cache_dir / 'stdout.txt'
-            path_stderr = self.cache_dir / 'stderr.txt'
+            path_stdout = cache_dir / 'stdout.txt'
+            path_stderr = cache_dir / 'stderr.txt'
             self.func = CaptureOut(self.func, path_stdout, path_stderr)
+        if self.change_dir:
+            self.func = ChDir(self.func, cache_dir)
 
     async def wait_and_run(self):
         self.process_func()

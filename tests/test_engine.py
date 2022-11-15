@@ -173,3 +173,31 @@ def test_repr_job():
             conditions=[AfterAnother(job_id=job1.id), AfterAnother(job_id=job2.id)]))
         str(job3)
         repr(job3)
+
+
+def test_chdir():
+    engine = Engine()
+
+    def write_file():
+        with open("1.txt", 'w') as f:
+            f.write("111")
+
+    def write_file2():
+        with open("2.txt", 'w') as f:
+            f.write("222")
+
+    async def submit_job():
+        job_cls: T.Type[Job]
+        for job_cls in [ProcessJob]:
+            job = job_cls(write_file, change_dir=True)
+            await engine.submit(job)
+            await job.join()
+            with open(job.cache_dir / '1.txt') as f:
+                assert f.read() == "111"
+            job = job_cls(write_file2, change_dir=True)
+            await engine.submit(job)
+            await job.join()
+            with open(job.cache_dir / '2.txt') as f:
+                assert f.read() == "222"
+
+    asyncio.run(submit_job())

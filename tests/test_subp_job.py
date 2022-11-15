@@ -2,6 +2,7 @@ import asyncio
 
 from executor.engine.core import Engine
 from executor.engine.job.extend.subprocess import SubprocessJob
+from executor.engine.job.condition import AfterAnother
 
 
 def test_run_cmd():
@@ -53,5 +54,26 @@ def test_record_command():
         assert job.result() == 0
         with open(job.cache_dir / "command.sh") as f:
             assert f.read() == cmd + "\n"
+
+    asyncio.run(submit_job())
+
+
+def test_condition():
+    engine = Engine()
+
+    lis = []
+    def append(x):
+        lis.append(x)
+
+    async def submit_job():
+        cmd = "python -c 'print(1 + 1)'"
+        job1 = SubprocessJob(cmd, callback=lambda _: append(1), )
+        job2 = SubprocessJob(cmd, callback=lambda _: append(2), condition=AfterAnother(job_id=job1.id))
+        job3 = SubprocessJob(cmd, callback=lambda _: append(3), condition=AfterAnother(job_id=job2.id))
+        await engine.submit(job3)
+        await engine.submit(job2)
+        await engine.submit(job1)
+        await engine.wait()
+        assert lis == [1, 2, 3]
 
     asyncio.run(submit_job())

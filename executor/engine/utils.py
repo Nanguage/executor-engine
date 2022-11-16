@@ -5,6 +5,7 @@ import shlex
 import subprocess as subp
 from threading import Thread
 from queue import Queue
+import psutil
 
 
 from .error import RangeCheckError, TypeCheckError
@@ -115,5 +116,29 @@ class ProcessRunner(object):
                     src = "stdout"
                 else:
                     src = "stderr"
-                yield src, line.decode()
+                line_decoded: str = line.decode()
+                yield src, line_decoded
         return self.proc.wait()
+
+    def write_stream_until_stop(self, out_file: T.TextIO, err_file: T.TextIO):
+        g = self.stream()
+        retcode = None
+        while True:
+            try:
+                src, line = next(g)
+                if src == 'stdout':
+                    out_file.write(line)
+                else:
+                    err_file.write(line)
+            except StopIteration as e:
+                retcode = e.value
+                break
+        return retcode
+
+
+def process_has_port(target_pid: int, ip: str, port: int) -> bool:
+    p = psutil.Process(target_pid)
+    addrs = [
+        (c.laddr.ip, c.laddr.port) for c in p.connections()
+    ]
+    return (ip, port) in addrs

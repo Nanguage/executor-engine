@@ -68,18 +68,8 @@ class SubprocessJob(ProcessJob):
             def run_cmd():
                 runner = ProcessRunner(cmd)
                 runner.run()
-                g = runner.stream()
                 with open(path_stdout, 'w') as fo, open(path_stderr, 'w') as fe:
-                    while True:
-                        try:
-                            src, line = next(g)
-                            if src == 'stdout':
-                                fo.write(line.rstrip("\n"))
-                            else:
-                                fe.write(line.rstrip("\n"))
-                        except StopIteration as e:
-                            retcode = e.value
-                            break
+                    retcode = runner.write_stream_until_stop(fo, fe)
                 return retcode
         else:
             def run_cmd():

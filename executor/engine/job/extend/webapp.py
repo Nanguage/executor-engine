@@ -1,9 +1,9 @@
 import time
 import typing as T
 import copy
-from threading import Thread
 import psutil
-import multiprocessing
+
+from loky.backend.process import LokyProcess
 
 from ..jobs.process import ProcessJob
 from ..condition import Condition
@@ -63,17 +63,18 @@ class WebAppJob(ProcessJob):
             return (ip, port) in addrs
 
         def func():
-            thread = Thread(target=web_launcher, args=(ip, port))
-            thread.start()
-            pid = multiprocessing.current_process().pid
+            proc = LokyProcess(target=web_launcher, args=(ip, port))
+            proc.start()
+            pid = proc.pid
             for _ in range(check_times):
                 time.sleep(check_delta)
                 if check_address(pid):
                     break
                 print(f"Process is not listen on {ip}:{port}. Try again.")
             else:
+                proc.terminate()
                 raise IOError(f"Process is not listen on {ip}:{port}.")
-            thread.join()
+            proc.join()
 
         self.func = func
         super().process_func()

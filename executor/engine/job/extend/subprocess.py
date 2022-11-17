@@ -83,5 +83,8 @@ class SubprocessJob(ProcessJob):
             if change_dir:
                 os.chdir(work_dir)
             retcode = run_cmd()
+            if retcode > 0:
+                raise subp.SubprocessError(
+                    f"Command '{cmd}' run failed, return code: {retcode}")
             return retcode
         self.func = func

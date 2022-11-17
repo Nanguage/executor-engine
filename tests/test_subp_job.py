@@ -12,12 +12,13 @@ def test_run_cmd():
         job = SubprocessJob("python -c 'print(1 + 1)'")
         await engine.submit(job)
         await job.join()
+        assert job.status == "done"
         assert job.result() == 0
 
         job = SubprocessJob("python -c 'print(1 + a)'")
         await engine.submit(job)
         await job.join()
-        assert job.result() != 0
+        assert job.status == "failed"
 
     asyncio.run(submit_job())
 
@@ -36,7 +37,7 @@ def test_capture_stdout_stderr():
         job = SubprocessJob("python -c 'print(1 + a)'", redirect_out_err=True)
         await engine.submit(job)
         await job.join()
-        assert job.result() != 0
+        assert job.status == "failed"
         with open(job.cache_dir / 'stderr.txt') as f:
             assert len(f.read()) > 0
 

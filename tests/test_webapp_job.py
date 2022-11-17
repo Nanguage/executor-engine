@@ -55,3 +55,14 @@ def test_launch_from_cmd():
     
     asyncio.run(submit_job())
 
+
+def test_launch_from_cmd_port_check():
+    engine = Engine()
+
+    async def submit_job():
+        job = WebAppJob("python -m http.server -b {ip} {port}1", port=8005)
+        await engine.submit(job)
+        await asyncio.sleep(5)
+        assert job.status == "failed"
+
+    asyncio.run(submit_job())

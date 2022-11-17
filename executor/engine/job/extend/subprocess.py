@@ -26,6 +26,9 @@ class SubprocessJob(ProcessJob):
         self.record_cmd = record_cmd
         if name is None:
             name = cmd.split()[0]
+        attrs.update({
+            'cmd': cmd,
+        })
         super().__init__(
             lambda x: x,
             callback=callback,

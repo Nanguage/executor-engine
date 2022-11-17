@@ -33,6 +33,10 @@ class WebAppJob(ProcessJob):
         self.web_launcher = web_launcher
         self.check_times = check_times
         self.check_delta = check_delta
+        if isinstance(web_launcher, str):
+            attrs.update({
+                "cmd": web_launcher,
+            })
         super().__init__(
             lambda x: x, callback=callback,
             error_callback=error_callback,

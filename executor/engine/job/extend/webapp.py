@@ -7,7 +7,8 @@ from loky.backend.process import LokyProcess
 
 from ..jobs.process import ProcessJob
 from ..condition import Condition
-from ...utils import process_has_port, ProcessRunner
+from ...utils import ProcessRunner, PortManager
+from ...error import ExecutorError
 
 
 LauncherFunc = T.Callable[[str, int], None]
@@ -16,7 +17,7 @@ LauncherFunc = T.Callable[[str, int], None]
 class WebAppJob(ProcessJob):
     def __init__(
             self, web_launcher: T.Union[LauncherFunc, str],
-            port: int, ip: str = "127.0.0.1",
+            ip: str = "127.0.0.1", port: T.Optional[int] = None,
             check_times: int = 5,
             check_delta: float = 0.5,
             callback: T.Optional[T.Callable[[T.Any], None]] = None,
@@ -28,6 +29,8 @@ class WebAppJob(ProcessJob):
             **attrs
             ) -> None:
         self.ip = ip
+        if ip not in ("127.0.0.1", "localhost", "0.0.0.0"):
+            raise NotImplementedError("WebAppJob now only support launch in local mechine.")
         self.port = port
         self.check_web_launcher(web_launcher)
         self.web_launcher = web_launcher
@@ -68,8 +71,29 @@ class WebAppJob(ProcessJob):
         attr_str = " ".join(attrs)
         return f"<{self.__class__.__name__} {attr_str}/>"
 
+    def consume_resource(self) -> bool:
+        if super().consume_resource():
+            if self.port is None:
+                self.port = PortManager.get_port()
+            else:
+                PortManager.consume_port(self.port)
+            return True
+        else:
+            return False
+
+    def release_resource(self) -> bool:
+        if self.port is None:
+            return False
+        if super().release_resource():
+            PortManager.release_port(self.port)
+            return True
+        else:
+            return False
+
     def process_func(self):
         web_launcher = copy.copy(self.web_launcher)
+        if self.port is None:
+            raise ExecutorError("Unreachable code.")
         ip, port = copy.copy(self.ip), copy.copy(self.port)
         check_times = copy.copy(self.check_times)
         check_delta = copy.copy(self.check_delta)
@@ -77,7 +101,7 @@ class WebAppJob(ProcessJob):
         def check_port(pid: int) -> bool:
             for _ in range(check_times):
                 time.sleep(check_delta)
-                if process_has_port(pid, ip, port):
+                if PortManager.process_has_port(pid, ip, port):
                     return True
                 print(f"Process is not listen on {ip}:{port}. Try again.")
             return False

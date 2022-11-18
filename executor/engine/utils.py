@@ -6,6 +6,7 @@ import subprocess as subp
 from threading import Thread
 from queue import Queue
 import psutil
+import socket
 
 
 from .error import RangeCheckError, TypeCheckError
@@ -136,9 +137,42 @@ class ProcessRunner(object):
         return retcode
 
 
-def process_has_port(target_pid: int, ip: str, port: int) -> bool:
-    p = psutil.Process(target_pid)
-    addrs = [
-        (c.laddr.ip, c.laddr.port) for c in p.connections()
-    ]
-    return (ip, port) in addrs
+class PortManager():
+
+    used_port: T.Set[int] = set()
+
+    @classmethod
+    def get_port(cls) -> int:
+        while True:
+            port = cls.find_free_port()
+            if port in cls.used_port:
+                continue
+            else:
+                cls.consume_port(port)
+                return port
+
+    @classmethod
+    def consume_port(cls, port: int):
+        cls.used_port.add(port)
+
+    @classmethod
+    def release_port(cls, port: int):
+        cls.used_port.remove(port)
+
+    @staticmethod
+    def find_free_port() -> int:
+        """https://stackoverflow.com/a/45690594/8500469"""
+        with contextlib.closing(
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+            s.bind(('', 0))
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            port = s.getsockname()[1]
+        return port
+
+    @staticmethod
+    def process_has_port(target_pid: int, ip: str, port: int) -> bool:
+        p = psutil.Process(target_pid)
+        addrs = [
+            (c.laddr.ip, c.laddr.port) for c in p.connections()
+        ]
+        return (ip, port) in addrs

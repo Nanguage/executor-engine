@@ -18,6 +18,7 @@ def test_run_webapp():
         job = WebAppJob(run_simple_httpd, ip="127.0.0.1", port=8001, check_delta=0.5)
         await engine.submit(job)
         await asyncio.sleep(5)
+        assert job.port == 8001
         assert job.status == "running"
         await job.cancel()
         assert job.status == "canceled"
@@ -34,7 +35,7 @@ def test_port_check():
         httpd.serve_forever()
 
     async def submit_job():
-        job = WebAppJob(run_error_httpd, ip="127.0.0.1", port=8002, check_delta=0.5)
+        job = WebAppJob(run_error_httpd, ip="127.0.0.1", check_delta=0.5)
         await engine.submit(job)
         await asyncio.sleep(5)
         assert job.status == "failed"
@@ -46,7 +47,7 @@ def test_launch_from_cmd():
     engine = Engine()
 
     async def submit_job():
-        job = WebAppJob("python -m http.server -b {ip} {port}", port=8005)
+        job = WebAppJob("python -m http.server -b {ip} {port}")
         await engine.submit(job)
         await asyncio.sleep(5)
         assert job.status == "running"
@@ -60,7 +61,7 @@ def test_launch_from_cmd_port_check():
     engine = Engine()
 
     async def submit_job():
-        job = WebAppJob("python -m http.server -b {ip} {port}1", port=8005)
+        job = WebAppJob("python -m http.server -b {ip} {port}1")
         await engine.submit(job)
         await asyncio.sleep(5)
         assert job.status == "failed"

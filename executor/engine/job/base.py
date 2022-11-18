@@ -108,9 +108,9 @@ class Job(ExecutorObj):
             self.func = ChDir(self.func, cache_dir)
 
     async def wait_and_run(self):
-        self.process_func()
         while True:
             if self.runnable() and self.consume_resource():
+                self.process_func()
                 self.status = "running"
                 res = await self.run()
                 return res

@@ -37,9 +37,7 @@ class WebAppJob(ProcessJob):
         self.check_times = check_times
         self.check_delta = check_delta
         if isinstance(web_launcher, str):
-            attrs.update({
-                "cmd": web_launcher,
-            })
+            attrs.update({"cmd": web_launcher})
         super().__init__(
             lambda x: x, callback=callback,
             error_callback=error_callback,
@@ -75,6 +73,7 @@ class WebAppJob(ProcessJob):
         if super().consume_resource():
             if self.port is None:
                 self.port = PortManager.get_port()
+                self.attrs.update({"address": f"{self.ip}:{self.port}"})
             else:
                 PortManager.consume_port(self.port)
             return True

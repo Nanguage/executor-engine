@@ -18,8 +18,8 @@ class WebAppJob(ProcessJob):
     def __init__(
             self, web_launcher: T.Union[LauncherFunc, str],
             ip: str = "127.0.0.1", port: T.Optional[int] = None,
-            check_times: int = 5,
-            check_delta: float = 0.5,
+            check_times: int = 6,
+            check_delta: float = 1.0,
             callback: T.Optional[T.Callable[[T.Any], None]] = None,
             error_callback: T.Optional[T.Callable[[Exception], None]] = None,
             name: T.Optional[str] = None,

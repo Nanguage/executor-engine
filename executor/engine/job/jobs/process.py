@@ -7,6 +7,8 @@ from ..base import Job
 
 
 class ProcessJob(Job):
+    MAX_WORKERS = 8
+
     def has_resource(self) -> bool:
         if self.engine is None:
             return False
@@ -28,7 +30,8 @@ class ProcessJob(Job):
             return True
 
     async def run(self):
-        self.executor = executor = get_reusable_executor(max_workers=1)
+        self.executor = executor = get_reusable_executor(
+            max_workers=ProcessJob.MAX_WORKERS)
         loop = asyncio.get_running_loop()
         func = functools.partial(self.func, **self.kwargs)
         try:

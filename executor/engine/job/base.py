@@ -55,7 +55,7 @@ class Job(ExecutorObj):
         self.created_time: datetime = datetime.now()
         self.submit_time: T.Optional[datetime] = None
         self.stoped_time: T.Optional[datetime] = None
-        self.executor = None
+        self.fut = None
 
     def __repr__(self) -> str:
         attrs = [
@@ -168,7 +168,7 @@ class Job(ExecutorObj):
         job = copy(self)
         job.task = None
         job.engine = None
-        job.executor = None
+        job.fut = None
         bytes_ = cloudpickle.dumps(job)
         return bytes_
 

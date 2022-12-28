@@ -30,12 +30,12 @@ class ProcessJob(Job):
             return True
 
     async def run(self):
-        self.executor = executor = get_reusable_executor(
+        executor = get_reusable_executor(
             max_workers=ProcessJob.MAX_WORKERS)
         loop = asyncio.get_running_loop()
         func = functools.partial(self.func, **self.kwargs)
         try:
-            fut = loop.run_in_executor(executor, func, *self.args)
+            self.fut = fut = loop.run_in_executor(executor, func, *self.args)
             result = await fut
             await self.on_done(result)
             return result
@@ -44,9 +44,9 @@ class ProcessJob(Job):
 
     async def cancel(self):
         if self.status == "running":
-            self.executor.shutdown(wait=True, kill_workers=True)
+            self.fut.cancel()
         await super().cancel()
 
     def clear_context(self):
-        self.executor.shutdown(wait=True, kill_workers=True)
-        del self.executor
+        self.fut.cancel()
+        self.fut = None

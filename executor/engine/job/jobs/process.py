@@ -1,13 +1,12 @@
 import asyncio
 import functools
 
-from loky import get_reusable_executor
+from loky.process_executor import ProcessPoolExecutor
 
 from ..base import Job
 
 
 class ProcessJob(Job):
-    MAX_WORKERS = 8
 
     def has_resource(self) -> bool:
         if self.engine is None:
@@ -30,12 +29,11 @@ class ProcessJob(Job):
             return True
 
     async def run(self):
-        executor = get_reusable_executor(
-            max_workers=ProcessJob.MAX_WORKERS)
+        self.executor = executor = ProcessPoolExecutor(1)
         loop = asyncio.get_running_loop()
         func = functools.partial(self.func, **self.kwargs)
         try:
-            self.fut = fut = loop.run_in_executor(executor, func, *self.args)
+            fut = loop.run_in_executor(executor, func, *self.args)
             result = await fut
             await self.on_done(result)
             return result
@@ -44,9 +42,9 @@ class ProcessJob(Job):
 
     async def cancel(self):
         if self.status == "running":
-            self.fut.cancel()
+            self.executor.shutdown(wait=True, kill_workers=True)
         await super().cancel()
 
     def clear_context(self):
-        self.fut.cancel()
-        self.fut = None
+        self.executor.shutdown(wait=True, kill_workers=True)
+        self.executor = None

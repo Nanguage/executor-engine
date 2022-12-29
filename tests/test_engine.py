@@ -42,6 +42,26 @@ def test_get_job_result():
     asyncio.run(submit_job())
 
 
+def test_parallel():
+    engine = Engine()
+
+    def sleep_add(a):
+        time.sleep(3)
+        return a + 1
+
+    async def submit_job():
+        j1 = ProcessJob(sleep_add, (1,))
+        j2 = ProcessJob(sleep_add, (2,))
+        t1 = time.time()
+        await engine.submit(j1)
+        await engine.submit(j2)
+        await engine.wait()
+        t2 = time.time()
+        assert (t2 - t1) < 5
+
+    asyncio.run(submit_job())
+
+
 def test_cancel_job():
     engine = Engine()
 
@@ -66,6 +86,7 @@ def test_cancel_job():
             await job.rerun()
             assert job.status == "pending"
             await job.cancel()
+            assert job.status == "canceled"
 
     asyncio.run(submit_job())
 

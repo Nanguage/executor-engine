@@ -55,7 +55,7 @@ class Job(ExecutorObj):
         self.created_time: datetime = datetime.now()
         self.submit_time: T.Optional[datetime] = None
         self.stoped_time: T.Optional[datetime] = None
-        self.fut = None
+        self.executor = None
 
     def __repr__(self) -> str:
         attrs = [
@@ -151,7 +151,7 @@ class Job(ExecutorObj):
             finally:
                 await self._on_finish("canceled")
         elif self.status == "pending":
-            self.engine.jobs.pending.pop(self.id)
+            self.status = "canceled"
 
     def clear_context(self):
         pass
@@ -168,7 +168,7 @@ class Job(ExecutorObj):
         job = copy(self)
         job.task = None
         job.engine = None
-        job.fut = None
+        job.executor = None
         bytes_ = cloudpickle.dumps(job)
         return bytes_
 

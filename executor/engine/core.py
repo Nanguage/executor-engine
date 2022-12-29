@@ -32,11 +32,7 @@ class Engine(ExecutorObj):
     def setup_by_setting(self):
         setting = self.setting
         self.thread_count = setting.max_threads
-        from .job.jobs.thread import ThreadJob
-        ThreadJob.MAX_WORKERS = setting.max_threads
         self.process_count = setting.max_processes
-        from .job.jobs.process import ProcessJob
-        ProcessJob.MAX_WORKERS = setting.max_processes
         self.cache_dir = self.get_cache_dir()
 
     async def submit(self, job: Job):

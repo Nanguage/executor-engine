@@ -38,7 +38,14 @@ def get_long_description():
 
 
 def get_install_requires():
-    requirements = ["loky", "diskcache", "cloudpickle", "pydantic", "psutil"]
+    requirements = [
+        "cmd2func>=0.1.3",
+        "loky",
+        "diskcache",
+        "cloudpickle",
+        "pydantic",
+        "psutil",
+    ]
     return requirements
 
 

@@ -6,7 +6,8 @@ import subprocess as subp
 
 from ..condition import Condition
 from ..jobs.process import ProcessJob
-from ...utils import ProcessRunner
+
+from cmd2func.runner import ProcessRunner
 
 
 class SubprocessJob(ProcessJob):

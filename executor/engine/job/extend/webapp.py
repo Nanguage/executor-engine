@@ -4,10 +4,11 @@ import copy
 import sys
 
 from loky.backend.process import LokyProcess
+from cmd2func.runner import ProcessRunner
 
 from ..jobs.process import ProcessJob
 from ..condition import Condition
-from ...utils import ProcessRunner, PortManager
+from ...utils import PortManager
 from ...error import ExecutorError
 
 

@@ -7,9 +7,9 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
     "License :: OSI Approved :: MIT License",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
@@ -49,7 +49,11 @@ def get_install_requires():
     return requirements
 
 
-requires_test = ['pytest', 'pytest-cov', 'flake8', 'pytest-order', 'mypy']
+requires_test = ['pytest', 'pytest-cov', 'flake8', 'mypy']
+packages_for_dev = ["pip", "setuptools", "wheel", "twine", "ipdb"]
+
+requires_dev = packages_for_dev + requires_test
+
 
 
 setup(
@@ -69,6 +73,7 @@ setup(
     install_requires=get_install_requires(),
     extras_require={
         'test': requires_test,
+        'dev': requires_dev,
     },
-    python_requires='>=3.7, <4',
+    python_requires='>=3.8, <4',
 )

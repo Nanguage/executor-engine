@@ -15,19 +15,13 @@ class Tee(object):
 
     def write(self, data):
         self.stream.write(data)
-        try:
-            self.file.write(data)
-        except ValueError:
-            pass
+        self.file.write(data)
 
     def __enter__(self):
         setattr(sys, self.stream_type, self)
 
     def __exit__(self, _type, _value, _traceback):
         setattr(sys, self.stream_type, self.stream)
-
-    def __getattr__(self, name: str) -> T.Any:
-        return getattr(self.stream, name)
 
 
 class CaptureOut(object):

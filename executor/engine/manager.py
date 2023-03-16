@@ -12,7 +12,7 @@ if T.TYPE_CHECKING:
 
 class JobStore():
     """Store jobs"""
-    def __init__(self, cache_path: T.Optional[Path]):
+    def __init__(self, cache_path: T.Optional[Path] = None):
         if cache_path is not None:
             self.cache = Cache(str(cache_path))
         else:
@@ -28,18 +28,22 @@ class JobStore():
     def update_from_cache(self, clear_old=False):
         if clear_old:
             self.mem.clear()
-        for key in self.cache:
-            job = self.get_from_cache(key)
-            self.mem[key] = job
+        if self.cache is not None:
+            for key in self.cache:
+                job = self.get_from_cache(key)
+                self.mem[key] = job
 
     def get_from_cache(self, key: str) -> Job:
+        if self.cache is None:
+            raise RuntimeError("No cache")
         bytes_ = self.cache[key]
         job = Job.deserialization(bytes_)
         return job
 
     def set_to_cache(self, key: str, val: Job):
         bytes_ = val.serialization()
-        self.cache[key] = bytes_
+        if self.cache is not None:
+            self.cache[key] = bytes_
 
     def __setitem__(self, key: str, val: Job):
         self.mem[key] = val
@@ -54,7 +58,8 @@ class JobStore():
 
     def clear(self):
         self.mem.clear()
-        self.cache.clear()
+        if self.cache is not None:
+            self.cache.clear()
 
     def pop(self, key: str) -> Job:
         job = self.mem.pop(key)
@@ -75,6 +80,9 @@ class JobStore():
     def __del__(self):
         if self.cache is not None:
             self.cache.close()
+
+    def __len__(self):
+        return len(self.mem)
 
 
 class Jobs:
@@ -114,7 +122,7 @@ class Jobs:
             self._stores[s].clear()
 
     def clear_non_active(self):
-        self.clear(["done", "failed", "cannceled"])
+        self.clear(["done", "failed", "canceled"])
 
     def clear_all(self):
         self.clear(self.valid_statuses)

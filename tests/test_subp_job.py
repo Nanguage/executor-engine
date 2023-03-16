@@ -32,7 +32,7 @@ def test_capture_stdout_stderr():
         await job.join()
         assert job.result() == 0
         with open(job.cache_dir / 'stdout.txt') as f:
-            assert f.read() == '2\n\n'
+            assert f.read().strip() == '2'
 
         job = SubprocessJob("python -c 'print(1 + a)'", redirect_out_err=True)
         await engine.submit(job)

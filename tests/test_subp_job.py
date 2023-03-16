@@ -78,3 +78,13 @@ def test_condition():
         assert lis == [1, 2, 3]
 
     asyncio.run(submit_job())
+
+
+def test_repr():
+    job = SubprocessJob("python -c 'print(1 + 1)'")
+    assert job.cmd in repr(job)
+    job1 = SubprocessJob(
+        "python -c 'print(1 + 1)'",
+        condition=AfterAnother(job_id=job.id)
+    )
+    assert repr(job1.condition) in repr(job1)

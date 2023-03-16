@@ -2,9 +2,11 @@ import time
 import typing as T
 import asyncio
 
+import pytest
 from executor.engine.core import Engine
 from executor.engine.job import LocalJob, ThreadJob, ProcessJob, Job
 from executor.engine.job.condition import AfterAnother, AnySatisfied
+from executor.engine.job.base import JobEmitError, InvalidStateError
 
 
 test_job_cls = [LocalJob, ThreadJob, ProcessJob]
@@ -222,3 +224,45 @@ def test_chdir():
                 assert f.read() == "222"
 
     asyncio.run(submit_job())
+
+
+def test_engine_get_cache_dir():
+    engine = Engine()
+    p = engine.get_cache_dir()
+    assert p == engine.get_cache_dir()
+
+
+def test_job_corner_cases():
+    engine = Engine()
+
+    job = ProcessJob(lambda x: x**2, (2,))
+    assert job.runnable() is False
+    assert job.cache_dir is None
+
+    async def submit_job():
+        with pytest.raises(JobEmitError):
+            await job.emit()
+
+    asyncio.run(submit_job())
+
+    async def submit_job():
+        with pytest.raises(JobEmitError):
+            await job.rerun()
+
+    asyncio.run(submit_job())
+
+    async def submit_job():
+        with pytest.raises(InvalidStateError):
+            await job.join()
+
+    asyncio.run(submit_job())
+
+    def sleep_2s():
+        time.sleep(2)
+
+    job = ProcessJob(sleep_2s)
+
+    async def submit_job():
+        await engine.submit(job)
+        with pytest.raises(InvalidStateError):
+            await job.result()

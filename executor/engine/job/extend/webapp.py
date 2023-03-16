@@ -31,7 +31,8 @@ class WebAppJob(ProcessJob):
             ) -> None:
         self.ip = ip
         if ip not in ("127.0.0.1", "localhost", "0.0.0.0"):
-            raise NotImplementedError("WebAppJob now only support launch in local mechine.")
+            raise NotImplementedError(
+                "WebAppJob now only support launch in local mechine.")
         self.port = port
         self.check_web_launcher(web_launcher)
         self.web_launcher = web_launcher
@@ -54,10 +55,12 @@ class WebAppJob(ProcessJob):
         if isinstance(web_launcher, str):
             cmd_temp = web_launcher
             if ('{ip}' not in cmd_temp) or ('{port}' not in cmd_temp):
-                raise ValueError("web_launcher should has ip and port placeholder.")
+                raise ValueError(
+                    "web_launcher should has ip and port placeholder.")
         else:
             if not callable(web_launcher):
-                raise TypeError("web_launcher should be a callable object or str.")
+                raise TypeError(
+                    "web_launcher should be a callable object or str.")
 
     def __repr__(self) -> str:
         attrs = [
@@ -66,7 +69,7 @@ class WebAppJob(ProcessJob):
             f"address={self.ip}:{self.port}",
         ]
         if self.condition:
-            attrs.append(f" condition={self.condition}")
+            attrs.append(f" condition={repr(self.condition)}")
         attr_str = " ".join(attrs)
         return f"<{self.__class__.__name__} {attr_str}/>"
 
@@ -108,11 +111,13 @@ class WebAppJob(ProcessJob):
 
         if isinstance(web_launcher, str):
             cmd = web_launcher.format(ip=ip, port=port)
+
             def func():
                 runner = ProcessRunner(cmd)
                 runner.run()
                 if check_port(runner.proc.pid):
-                    retcode = runner.write_stream_until_stop(sys.stdout, sys.stderr)
+                    retcode = runner.write_stream_until_stop(
+                        sys.stdout, sys.stderr)
                     sys.exit(retcode)
                 else:
                     runner.proc.terminate()

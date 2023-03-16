@@ -96,7 +96,10 @@ class JobFuture():
     def done(self) -> bool:
         return self.fut.done()
 
-    def exception(self, timeout: T.Optional[float] = None) -> T.Optional[BaseException]:
+    def exception(
+            self,
+            timeout: T.Optional[float] = None
+            ) -> T.Optional[BaseException]:
         return self.fut.exception(timeout)
 
     def result(self) -> T.Any:
@@ -104,7 +107,7 @@ class JobFuture():
 
     def running(self) -> bool:
         return self.fut.running()
-    
+
     def set_exception(self, exception: Exception) -> None:
         self.fut.set_exception(exception)
 

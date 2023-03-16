@@ -55,7 +55,6 @@ packages_for_dev = ["pip", "setuptools", "wheel", "twine", "ipdb"]
 requires_dev = packages_for_dev + requires_test
 
 
-
 setup(
     name='executor-engine',
     author='Weize Xu',

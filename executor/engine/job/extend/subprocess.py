@@ -49,7 +49,7 @@ class SubprocessJob(ProcessJob):
             f"cmd={self.cmd}",
         ]
         if self.condition:
-            attrs.append(f" condition={self.condition}")
+            attrs.append(f" condition={repr(self.condition)}")
         attr_str = " ".join(attrs)
         return f"<{self.__class__.__name__} {attr_str}/>"
 
@@ -69,10 +69,12 @@ class SubprocessJob(ProcessJob):
         if self.redirect_out_err:
             path_stdout = cache_dir / 'stdout.txt'
             path_stderr = cache_dir / 'stderr.txt'
+
             def run_cmd():
                 runner = ProcessRunner(cmd)
                 runner.run()
-                with open(path_stdout, 'w') as fo, open(path_stderr, 'w') as fe:
+                with open(path_stdout, 'w') as fo, \
+                     open(path_stderr, 'w') as fe:
                     retcode = runner.write_stream_until_stop(fo, fe)
                 return retcode
         else:

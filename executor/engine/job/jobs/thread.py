@@ -1,4 +1,3 @@
-import typing as T
 import asyncio
 import functools
 from concurrent.futures import ThreadPoolExecutor

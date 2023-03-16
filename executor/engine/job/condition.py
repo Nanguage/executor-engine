@@ -10,7 +10,7 @@ if T.TYPE_CHECKING:
 
 
 class Condition(BaseModel):
-    def satisfy(self, engine: "Engine") -> bool:
+    def satisfy(self, engine: "Engine") -> bool:  # pragma: no cover
         return True
 
 

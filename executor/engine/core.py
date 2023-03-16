@@ -1,6 +1,7 @@
 import typing as T
 from dataclasses import dataclass
 from pathlib import Path
+import asyncio
 
 from .base import ExecutorObj
 from .job.base import Job
@@ -49,16 +50,19 @@ class Engine(ExecutorObj):
             await job.cancel()
         self.jobs.remove(job)
 
-    async def wait(self):
-        job: Job
+    async def wait(self, timeout: T.Optional[float] = None):
+        """Block until all jobs are finished or timeout."""
+        tasks = []
         for job in self.jobs.all_jobs():
             if job.task is not None:
-                await job.task
+                tasks.append(job.task)
+        if tasks:
+            await asyncio.wait(tasks, timeout=timeout)
 
     def get_cache_dir(self) -> Path:
         cache_path = self.setting.cache_path
         if cache_path is not None:
-            path =  cache_path
+            path = cache_path
         else:
             path = f".executor/{self.id}"
         path_obj = Path(path)

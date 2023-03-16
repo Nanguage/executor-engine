@@ -13,8 +13,8 @@
     <a href="https://executor.readthedocs.io/en/latest/">
     	<img src="https://readthedocs.org/projects/executor/badge/?version=latest" alt="Documentation">
     </a>
-  <a href="https://pypi.org/project/executor/">
-    <img src="https://img.shields.io/pypi/v/executor.svg" alt="Install with PyPI" />
+  <a href="https://pypi.org/project/executor-engine/">
+    <img src="https://img.shields.io/pypi/v/executor-engine.svg" alt="Install with PyPI" />
   </a>
   <a href="https://github.com/Nanguage/executor/blob/master/LICENSE">
     <img src="https://img.shields.io/github/license/Nanguage/executor" alt="MIT license" />

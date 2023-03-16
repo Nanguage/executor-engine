@@ -42,7 +42,8 @@ class CaptureOut(object):
         self.capture_traceback = capture_traceback
 
     def __call__(self, *args, **kwargs) -> T.Any:
-        with open(self.stdout_file, 'w') as fo, open(self.stderr_file, 'w') as fe:
+        with open(self.stdout_file, 'w') as fo, \
+             open(self.stderr_file, 'w') as fe:
             with Tee(fo, 'stdout'), Tee(fe, 'stderr'):
                 try:
                     res = self.func(*args, **kwargs)

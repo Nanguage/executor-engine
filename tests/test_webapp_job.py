@@ -1,8 +1,11 @@
 import asyncio
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
+import pytest
+
 from executor.engine.core import Engine
 from executor.engine.job.extend.webapp import WebAppJob
+from executor.engine.job.condition import AfterAnother
 
 
 def run_simple_httpd(ip: str, port: int):
@@ -15,6 +18,15 @@ def test_run_webapp():
     engine = Engine()
 
     async def submit_job():
+        with pytest.raises(NotImplementedError):
+            job = WebAppJob(run_simple_httpd, ip="2.2.2.2", port=8001, check_delta=0.5)
+
+        with pytest.raises(ValueError):
+            job = WebAppJob("python -m http.server -b ip port")
+
+        with pytest.raises(TypeError):
+            job = WebAppJob(1)
+
         job = WebAppJob(run_simple_httpd, ip="127.0.0.1", port=8001, check_delta=0.5)
         await engine.submit(job)
         await asyncio.sleep(5)
@@ -67,3 +79,13 @@ def test_launch_from_cmd_port_check():
         assert job.status == "failed"
 
     asyncio.run(submit_job())
+
+
+def test_repr():
+    job = WebAppJob("python -m http.server -b {ip} {port}")
+    repr(job)
+    job1 = WebAppJob(
+        "python -m http.server -b {ip} {port}",
+        condition=AfterAnother(job_id=job.id),
+    )
+    assert repr(job1.condition) in repr(job1)

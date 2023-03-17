@@ -1,5 +1,7 @@
-from executor.engine.task import task
 import time
+import asyncio
+
+from executor.engine.task import task
 
 
 def test_task_and_fut():
@@ -34,3 +36,27 @@ def test_task_and_fut():
     fut.add_done_callback(lambda x: set_var(x))
     fut.result()
     assert var == 2
+
+
+def test_sync_chain():
+    @task
+    def add(a, b):
+        return a + b
+
+    fut = add.submit(1, 2)
+    fut2 = add.submit(fut, 2)
+    assert fut2.result() == 5
+
+
+def test_async_task_run():
+    @task(async_mode=True)
+    def add(a, b):
+        time.sleep(0.5)
+        return a + b
+
+    async def main():
+        a = await add(1, 2)
+        b = await add(a, 2)
+        assert b == 5
+
+    asyncio.run(main())

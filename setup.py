@@ -40,6 +40,7 @@ def get_long_description():
 def get_install_requires():
     requirements = [
         "cmd2func>=0.1.3",
+        "funcdesc>=0.1.2",
         "loky",
         "diskcache",
         "cloudpickle",

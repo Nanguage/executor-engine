@@ -137,10 +137,15 @@ class Jobs:
             if job.id in store:
                 store.pop(job.id)
 
-    def move_job_store(self, job: Job, new_status: JobStatusType):
-        if job.status == new_status:
+    def move_job_store(
+            self, job: Job,
+            new_status: JobStatusType,
+            old_status: T.Optional[JobStatusType] = None):
+        if old_status is None:
+            old_status = job.status
+        if old_status == new_status:
             return
-        old_store = self._stores[job.status]
+        old_store = self._stores[old_status]
         new_store = self._stores[new_status]
         new_store[job.id] = old_store.pop(job.id)
 
@@ -159,9 +164,10 @@ class Jobs:
         return self.get_job_by_id(job_id) is not None
 
     def all_jobs(self) -> T.List[Job]:
-        jobs = []
+        return list(iter(self))
+
+    def __iter__(self):
         for status in self.valid_statuses:
             store = self._stores[status]
             for job in store.values():
-                jobs.append(job)
-        return jobs
+                yield job

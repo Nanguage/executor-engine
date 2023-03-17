@@ -146,7 +146,7 @@ class Job(ExecutorObj):
         if self.status == "running":
             try:
                 self.clear_context()
-            except Exception as e:
+            except Exception as e:  # pragma: no cover
                 print(str(e))
             finally:
                 await self._on_finish("canceled")
@@ -157,9 +157,9 @@ class Job(ExecutorObj):
         pass
 
     def result(self) -> T.Any:
-        if self.status != "done":
-            raise InvalidStateError(f"{self} is not done.")
         if self.task is not None:
+            if self.status != "done":
+                raise InvalidStateError(f"{self} is not done.")
             return self.task.result()
         else:
             raise InvalidStateError(f"{self} is not emitted.")

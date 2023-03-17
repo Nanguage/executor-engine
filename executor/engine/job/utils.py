@@ -19,9 +19,11 @@ class JobStatusAttr(CheckAttrRange):
 
     def __set__(self, obj: "Job", value: JobStatusType):
         self.check(obj, value)
-        if obj.engine is not None:
-            obj.engine.jobs.move_job_store(obj, value)
+        old_status = getattr(obj, self.attr)
         setattr(obj, self.attr, value)
+        if obj.engine is not None:
+            obj.engine.jobs.move_job_store(
+                obj, value, old_status)
         if value in ('done', 'failed', 'canceled'):
             obj.stoped_time = datetime.now()
 

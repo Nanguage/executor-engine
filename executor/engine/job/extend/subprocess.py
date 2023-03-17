@@ -70,7 +70,7 @@ class SubprocessJob(ProcessJob):
             path_stdout = cache_dir / 'stdout.txt'
             path_stderr = cache_dir / 'stderr.txt'
 
-            def run_cmd():
+            def run_cmd():  # pragma: no cover
                 runner = ProcessRunner(cmd)
                 runner.run()
                 with open(path_stdout, 'w') as fo, \

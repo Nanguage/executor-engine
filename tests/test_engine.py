@@ -1,6 +1,7 @@
 import time
 import typing as T
 import asyncio
+import shutil
 
 import pytest
 from executor.engine.core import Engine
@@ -24,6 +25,31 @@ def test_submit_job():
     async def submit_job():
         for job_cls in test_job_cls:
             job = job_cls(lambda x: x**2, (2,), callback=callback)
+            await engine.submit(job)
+        await engine.wait()
+
+    asyncio.run(submit_job())
+    assert n_run == 3
+
+
+def test_err_callback():
+    engine = Engine()
+
+    def raise_err():
+        raise ValueError("test")
+    
+    n_run = 0
+    def err_callback(e):
+        nonlocal n_run
+        n_run += 1
+        print(e)
+
+    async def submit_job():
+        for job_cls in test_job_cls:
+            job = job_cls(
+                raise_err,
+                error_callback=err_callback,
+            )
             await engine.submit(job)
         await engine.wait()
 
@@ -88,6 +114,20 @@ def test_cancel_job():
             await job.rerun()
             assert job.status == "pending"
             await job.cancel()
+            assert job.status == "canceled"
+
+    asyncio.run(submit_job())
+
+    # test engine.cancel_all
+    async def submit_job():
+        for job_cls in [ProcessJob]:
+            for _ in range(3):
+                job: Job = job_cls(run_forever)
+                await engine.submit(job)
+                await asyncio.sleep(0.1)
+                assert job.status == "running"
+        await engine.cancel_all()
+        for job in engine.jobs:
             assert job.status == "canceled"
 
     asyncio.run(submit_job())
@@ -230,12 +270,27 @@ def test_engine_get_cache_dir():
     engine = Engine()
     p = engine.get_cache_dir()
     assert p == engine.get_cache_dir()
+    setting = engine.setting
+    setting.cache_path = "./test_cache"
+    del engine
+    engine = Engine(setting=setting)
+    engine.get_cache_dir()
+    del engine
+    shutil.rmtree(setting.cache_path)
 
 
 def test_job_corner_cases():
     engine = Engine()
 
+    job = ThreadJob(lambda x: x**2, (2,))
+    assert job.has_resource() is False
+    assert job.consume_resource() is False
+    assert job.release_resource() is False
+
     job = ProcessJob(lambda x: x**2, (2,))
+    assert job.has_resource() is False
+    assert job.consume_resource() is False
+    assert job.release_resource() is False
     assert job.runnable() is False
     assert job.cache_dir is None
 
@@ -263,6 +318,10 @@ def test_job_corner_cases():
     job = ProcessJob(sleep_2s)
 
     async def submit_job():
+        with pytest.raises(InvalidStateError):
+            await job.result()
         await engine.submit(job)
         with pytest.raises(InvalidStateError):
             await job.result()
+
+    asyncio.run(submit_job())

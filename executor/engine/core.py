@@ -69,6 +69,6 @@ class Engine(ExecutorObj):
         path_obj.mkdir(parents=True, exist_ok=True)
         return path_obj
 
-    def cancel_all(self):
+    async def cancel_all(self):
         for job in self.jobs.running.values():
-            job.status = 'canceled'
+            await job.cancel()

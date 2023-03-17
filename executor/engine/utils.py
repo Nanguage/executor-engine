@@ -83,7 +83,7 @@ class PortManager():
     def get_port(cls) -> int:
         while True:
             port = cls.find_free_port()
-            if port in cls.used_port:
+            if port in cls.used_port:  # pragma: no cover
                 continue
             else:
                 cls.consume_port(port)

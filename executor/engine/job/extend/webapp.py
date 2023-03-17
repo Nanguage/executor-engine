@@ -81,27 +81,27 @@ class WebAppJob(ProcessJob):
             else:
                 PortManager.consume_port(self.port)
             return True
-        else:
+        else:  # pragma: no cover
             return False
 
     def release_resource(self) -> bool:
-        if self.port is None:
+        if self.port is None:  # pragma: no cover
             return False
         if super().release_resource():
             PortManager.release_port(self.port)
             return True
-        else:
+        else:  # pragma: no cover
             return False
 
     def process_func(self):
         web_launcher = copy.copy(self.web_launcher)
-        if self.port is None:
+        if self.port is None:  # pragma: no cover
             raise ExecutorError("Unreachable code.")
         ip, port = copy.copy(self.ip), copy.copy(self.port)
         check_times = copy.copy(self.check_times)
         check_delta = copy.copy(self.check_delta)
 
-        def check_port(pid: int) -> bool:
+        def check_port(pid: int) -> bool:  # pragma: no cover
             for _ in range(check_times):
                 time.sleep(check_delta)
                 if PortManager.process_has_port(pid, ip, port):
@@ -112,7 +112,7 @@ class WebAppJob(ProcessJob):
         if isinstance(web_launcher, str):
             cmd = web_launcher.format(ip=ip, port=port)
 
-            def func():
+            def func():  # pragma: no cover
                 runner = ProcessRunner(cmd)
                 runner.run()
                 if check_port(runner.proc.pid):
@@ -123,7 +123,7 @@ class WebAppJob(ProcessJob):
                     runner.proc.terminate()
                     raise IOError(f"Process is not listen on {ip}:{port}.")
         else:
-            def func():
+            def func():  # pragma: no cover
                 proc = LokyProcess(target=web_launcher, args=(ip, port))
                 proc.start()
                 pid = proc.pid

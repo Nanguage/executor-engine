@@ -30,9 +30,11 @@ class Job(ExecutorObj):
             kwargs: T.Optional[dict] = None,
             callback: T.Optional[T.Callable[[T.Any], None]] = None,
             error_callback: T.Optional[T.Callable[[Exception], None]] = None,
+            retries: int = 0,
+            retry_time_delta: float = 0.0,
             name: T.Optional[str] = None,
             condition: T.Optional[Condition] = None,
-            time_delta: float = 0.01,
+            wait_time_delta: float = 0.01,
             redirect_out_err: bool = False,
             change_dir: bool = False,
             **attrs
@@ -43,13 +45,16 @@ class Job(ExecutorObj):
         self.kwargs = kwargs or {}
         self.callback = callback
         self.error_callback = error_callback
+        self.retries = retries
+        self.retry_count = 0
+        self.retry_time_delta = retry_time_delta
         self.engine: T.Optional["Engine"] = None
         self._status: str = "created"
         self.name = name or func.__name__
         self.attrs = attrs
         self.task: T.Optional[asyncio.Task] = None
         self.condition = condition
-        self.time_delta = time_delta
+        self.wait_time_delta = wait_time_delta
         self.redirect_out_err = redirect_out_err
         self.change_dir = change_dir
         self.created_time: datetime = datetime.now()
@@ -115,7 +120,7 @@ class Job(ExecutorObj):
                 res = await self.run()
                 return res
             else:
-                await asyncio.sleep(self.time_delta)
+                await asyncio.sleep(self.wait_time_delta)
 
     async def run(self):
         pass
@@ -140,6 +145,10 @@ class Job(ExecutorObj):
         if self.error_callback is not None:
             self.error_callback(e)
         await self._on_finish("failed")
+        if self.retry_count < self.retries:
+            self.retry_count += 1
+            await asyncio.sleep(self.retry_time_delta)
+            await self.rerun()
 
     async def cancel(self):
         self.task.cancel()

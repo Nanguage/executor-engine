@@ -27,6 +27,8 @@
 
 + Task design
 + Job retry
++ Dask executor
++ Logging system
 
 
 ## Related Projects

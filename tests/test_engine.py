@@ -279,6 +279,23 @@ def test_engine_get_cache_dir():
     shutil.rmtree(setting.cache_path)
 
 
+def test_job_retry():
+    engine = Engine()
+    def raise_exception():
+        print("try")
+        raise ValueError("error")
+    job = ProcessJob(
+        raise_exception, retries=2,
+        retry_time_delta=1)
+    assert job.retry_count == 0
+    async def main():
+        await engine.submit(job)
+        await asyncio.sleep(5)
+        await engine.wait()
+    asyncio.run(main())
+    assert job.retry_count == 2
+
+
 def test_job_corner_cases():
     engine = Engine()
 

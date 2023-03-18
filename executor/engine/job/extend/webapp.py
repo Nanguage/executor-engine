@@ -45,7 +45,7 @@ class WebAppJob(ProcessJob):
             error_callback=error_callback,
             name=name,
             condition=condition,
-            time_delta=time_delta,
+            wait_time_delta=time_delta,
             redirect_out_err=redirect_out_err,
             **attrs
         )

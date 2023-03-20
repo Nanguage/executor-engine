@@ -6,26 +6,34 @@ from ..base import Job
 
 
 class ThreadJob(Job):
-
     def has_resource(self) -> bool:
         if self.engine is None:
             return False
         else:
-            return self.engine.thread_count > 0
+            return (
+                super().has_resource() and
+                (self.engine.resource.n_thread > 0)
+            )
 
     def consume_resource(self) -> bool:
         if self.engine is None:
             return False
         else:
-            self.engine.thread_count -= 1
-            return True
+            self.engine.resource.n_thread -= 1
+            return (
+                super().consume_resource() and
+                True
+            )
 
     def release_resource(self) -> bool:
         if self.engine is None:
             return False
         else:
-            self.engine.thread_count += 1
-            return True
+            self.engine.resource.n_thread += 1
+            return (
+                super().release_resource() and
+                True
+            )
 
     async def run(self):
         self.executor = executor = ThreadPoolExecutor(1)

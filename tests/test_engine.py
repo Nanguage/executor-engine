@@ -251,7 +251,7 @@ def test_chdir():
 
     async def submit_job():
         job_cls: T.Type[Job]
-        for job_cls in [ProcessJob]:
+        for job_cls in test_job_cls:
             job = job_cls(write_file, change_dir=True)
             await engine.submit(job)
             await job.join()
@@ -298,6 +298,11 @@ def test_job_retry():
 
 def test_job_corner_cases():
     engine = Engine()
+
+    job = LocalJob(lambda x: x**2, (2,))
+    assert job.has_resource() is False
+    assert job.consume_resource() is False
+    assert job.release_resource() is False
 
     job = ThreadJob(lambda x: x**2, (2,))
     assert job.has_resource() is False

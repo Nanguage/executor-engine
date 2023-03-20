@@ -25,10 +25,11 @@
 
 ## TODO List
 
-+ Task design
-+ Job retry
-+ Dask executor
-+ Logging system
+- [x] Task design.
+- [x] Job retry.
+- [ ] Dask job.
+- [ ] Change engine's API to sync mode.
+- [ ] Logging system.
 
 
 ## Related Projects

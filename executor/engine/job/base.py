@@ -77,13 +77,24 @@ class Job(ExecutorObj):
         return repr(self)
 
     def has_resource(self) -> bool:
-        return True
+        if self.engine is None:
+            return False
+        else:
+            return self.engine.resource.n_job > 0
 
     def consume_resource(self) -> bool:
-        return True
+        if self.engine is None:
+            return False
+        else:
+            self.engine.resource.n_job -= 1
+            return True
 
     def release_resource(self) -> bool:
-        return True
+        if self.engine is None:
+            return False
+        else:
+            self.engine.resource.n_job += 1
+            return True
 
     def runnable(self) -> bool:
         if self.engine is None:

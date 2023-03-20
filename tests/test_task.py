@@ -10,6 +10,8 @@ def test_task_and_fut():
         time.sleep(1)
         return a + b
 
+    assert add.async_mode is False
+
     fut = add.submit(1, 2)
     assert fut.done() is False
     assert fut.running() is True
@@ -46,6 +48,9 @@ def test_sync_chain():
     fut = add.submit(1, 2)
     fut2 = add.submit(fut, 2)
     assert fut2.result() == 5
+    fut1 = add.submit(1, 2)
+    fut2 = add.submit(a=fut1.result(), b=fut1.result())
+    assert fut2.result() == 6
 
 
 def test_async_task_run():
@@ -54,9 +59,24 @@ def test_async_task_run():
         time.sleep(0.5)
         return a + b
 
+    assert add.async_mode is True
+
     async def main():
         a = await add(1, 2)
         b = await add(a, 2)
         assert b == 5
 
     asyncio.run(main())
+
+
+def test_sync_async_convert():
+    @task(async_mode=True)
+    def add(a, b):
+        time.sleep(0.5)
+        return a + b
+
+    assert add.async_mode is True
+    add_sync = add.to_sync()
+    assert add_sync.async_mode is False
+    add_async = add_sync.to_async()
+    assert add_async.async_mode is True

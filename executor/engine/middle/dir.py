@@ -11,5 +11,8 @@ class ChDir(object):
         self.target_dir = target_dir
 
     def __call__(self, *args, **kwargs) -> T.Any:
+        old = os.getcwd()
         os.chdir(self.target_dir)
-        return self.func(*args, **kwargs)
+        res = self.func(*args, **kwargs)
+        os.chdir(old)
+        return res

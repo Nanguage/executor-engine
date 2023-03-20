@@ -7,12 +7,25 @@ from .base import ExecutorObj
 from .job.base import Job
 from .manager import Jobs
 
+if T.TYPE_CHECKING:
+    from dask.distributed import Client
+
 
 @dataclass
 class EngineSetting:
-    max_threads: int = 20
-    max_processes: int = 8
+    max_threads: T.Optional[int] = None
+    max_processes: T.Optional[int] = None
+    max_dask_jobs: T.Optional[int] = None
+    max_jobs: T.Optional[int] = 20
     cache_path: T.Optional[str] = None
+
+
+@dataclass
+class Resource:
+    n_thread: T.Union[int, float]
+    n_process: T.Union[int, float]
+    n_dask: T.Union[int, float]
+    n_job: T.Union[int, float]
 
 
 class Engine(ExecutorObj):
@@ -29,11 +42,16 @@ class Engine(ExecutorObj):
         if jobs is None:
             jobs = Jobs(self.cache_dir / "jobs")
         self.jobs: Jobs = jobs
+        self._dask_client = None
 
     def setup_by_setting(self):
         setting = self.setting
-        self.thread_count = setting.max_threads
-        self.process_count = setting.max_processes
+        self.resource = Resource(
+            n_thread=setting.max_threads or float('inf'),
+            n_process=setting.max_processes or float('inf'),
+            n_dask=setting.max_dask_jobs or float('inf'),
+            n_job=setting.max_jobs or float('inf'),
+        )
         self.cache_dir = self.get_cache_dir()
 
     async def submit(self, job: Job):
@@ -72,3 +90,16 @@ class Engine(ExecutorObj):
     async def cancel_all(self):
         for job in self.jobs.running.values():
             await job.cancel()
+
+    @property
+    def dask_client(self):
+        from .job.dask.manager import get_default_client
+        if self._dask_client is None:
+            self._dask_client = get_default_client()
+        return self._dask_client
+
+    @dask_client.setter
+    def dask_client(self, client: "Client"):
+        if not client.asynchronous:
+            raise ValueError("Dask client must be asynchronous.")
+        self._dask_client = client

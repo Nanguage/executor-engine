@@ -55,6 +55,8 @@ packages_for_dev = ["pip", "setuptools", "wheel", "twine", "ipdb"]
 
 requires_dev = packages_for_dev + requires_test
 
+requires_dask = ['dask', 'distributed', 'nest_asyncio']
+
 
 setup(
     name='executor-engine',
@@ -74,6 +76,8 @@ setup(
     extras_require={
         'test': requires_test,
         'dev': requires_dev,
+        'dask': requires_dask,
+        'all': requires_dask,
     },
     python_requires='>=3.8, <4',
 )

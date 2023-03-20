@@ -6,7 +6,7 @@ import sys
 from loky.backend.process import LokyProcess
 from cmd2func.runner import ProcessRunner
 
-from ..jobs.process import ProcessJob
+from ..process import ProcessJob
 from ..condition import Condition
 from ...utils import PortManager
 from ...error import ExecutorError

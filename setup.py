@@ -46,6 +46,7 @@ def get_install_requires():
         "cloudpickle",
         "pydantic",
         "psutil",
+        "loguru",
     ]
     return requirements
 

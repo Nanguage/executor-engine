@@ -1,6 +1,12 @@
 import functools
 
-from ..base import Job
+from dask.distributed import Client
+
+from .base import Job
+
+
+def get_default_client() -> Client:
+    return Client(asynchronous=True)
 
 
 class DaskJob(Job):

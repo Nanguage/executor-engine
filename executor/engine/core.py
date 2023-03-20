@@ -2,10 +2,12 @@ import typing as T
 from dataclasses import dataclass
 from pathlib import Path
 import asyncio
+from threading import Thread
 
 from .base import ExecutorObj
 from .job.base import Job
 from .manager import Jobs
+from .utils import get_event_loop
 
 if T.TYPE_CHECKING:
     from dask.distributed import Client
@@ -33,6 +35,7 @@ class Engine(ExecutorObj):
             self,
             setting: T.Optional[EngineSetting] = None,
             jobs: T.Optional[Jobs] = None,
+            loop: T.Optional[asyncio.AbstractEventLoop] = None,
             ) -> None:
         super().__init__()
         if setting is None:
@@ -43,6 +46,20 @@ class Engine(ExecutorObj):
             jobs = Jobs(self.cache_dir / "jobs")
         self.jobs: Jobs = jobs
         self._dask_client: T.Optional["Client"] = None
+        self._loop = loop
+        self._loop_thread: T.Optional[Thread] = None
+
+    @property
+    def loop(self):
+        if self._loop is None:
+            loop, _ = get_event_loop()
+            self._loop = loop
+        return self._loop
+
+    def start(self):
+        if not self._loop_thread.is_alive():
+            self._loop_thread = Thread(target=self.loop.run_forever)
+            self._loop_thread.start()
 
     def setup_by_setting(self):
         setting = self.setting
@@ -93,7 +110,7 @@ class Engine(ExecutorObj):
 
     @property
     def dask_client(self):
-        from .job.dask.manager import get_default_client
+        from .job.dask import get_default_client
         if self._dask_client is None:
             self._dask_client = get_default_client()
         return self._dask_client

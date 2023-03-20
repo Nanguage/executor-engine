@@ -3,7 +3,7 @@ import functools
 
 from loky.process_executor import ProcessPoolExecutor
 
-from ..base import Job
+from .base import Job
 
 
 class ProcessJob(Job):

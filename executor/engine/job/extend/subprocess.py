@@ -5,7 +5,7 @@ import typing as T
 import subprocess as subp
 
 from ..condition import Condition
-from ..jobs.process import ProcessJob
+from ..process import ProcessJob
 
 from cmd2func.runner import ProcessRunner
 

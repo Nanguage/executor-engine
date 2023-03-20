@@ -14,11 +14,15 @@ def test_submit_job():
     assert job.has_resource() is False
     assert job.consume_resource() is False
     assert job.release_resource() is False
+    job2 = DaskJob(lambda x: x**2, (3,))
 
     async def main():
         await engine.submit(job)
+        await engine.submit(job2)
         await engine.wait()
         assert job.result() == 4
+        assert job2.result() == 9
+        await engine.dask_client.close()
 
     asyncio.run(main())
 
@@ -34,6 +38,7 @@ def test_exception():
         await engine.submit(job)
         await engine.wait()
         assert job.status == "failed"
+        await engine.dask_client.close()
 
     asyncio.run(main())
 
@@ -47,10 +52,11 @@ def test_cancel_job():
 
     async def main():
         await engine.submit(job)
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
         await job.cancel()
         await engine.wait()
         assert job.status == "canceled"
+        await engine.dask_client.close()
 
     asyncio.run(main())
 
@@ -62,8 +68,11 @@ def test_set_client():
         client = Client(asynchronous=True)
         engine.dask_client = client
         assert engine.dask_client is client
+        await asyncio.sleep(0.1)
+        await client.close()
         client = Client()
         with pytest.raises(ValueError):
             engine.dask_client = client
+        client.close()
 
     asyncio.run(main())

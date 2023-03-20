@@ -42,7 +42,7 @@ class Engine(ExecutorObj):
         if jobs is None:
             jobs = Jobs(self.cache_dir / "jobs")
         self.jobs: Jobs = jobs
-        self._dask_client = None
+        self._dask_client: T.Optional["Client"] = None
 
     def setup_by_setting(self):
         setting = self.setting

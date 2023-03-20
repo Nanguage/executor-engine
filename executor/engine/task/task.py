@@ -24,7 +24,7 @@ job_type_classes: T.Dict[str, T.Type[Job]] = {
 JOB_TYPES = T.Literal['local', 'thread', 'process', 'subprocess', 'webapp']
 
 
-_engine = None
+_engine: T.Optional[Engine] = None
 
 
 def get_engine() -> Engine:
@@ -41,7 +41,7 @@ class TaskBase(object):
             job_type: JOB_TYPES = 'process',
             name: T.Optional[str] = None,
             description: T.Optional[str] = None,
-            tags: T.Optional[T.List] = None,
+            tags: T.Optional[T.List[str]] = None,
             **job_attrs):
         self.engine = engine
         self.target_func = target_func
@@ -103,7 +103,7 @@ class SyncTask(TaskBase):
         return res
 
     def submit(self, *args, **kwargs) -> 'Future':
-        fut = self.pool.submit(self.run_in_pool, args, kwargs)
+        fut = self.pool.submit(self.run_in_pool, list(args), kwargs)
         return fut
 
     def __call__(self, *args, **kwargs) -> T.Any:
@@ -113,7 +113,7 @@ class SyncTask(TaskBase):
     def to_async(self) -> "AsyncTask":
         return AsyncTask(
             self.target_func, self.engine, self.job_type,
-            self.name, self.tags, **self.job_attrs,
+            self.name, self.description, self.tags, **self.job_attrs,
         )
 
 
@@ -134,7 +134,7 @@ class AsyncTask(TaskBase):
     def to_sync(self) -> "SyncTask":
         return SyncTask(
             self.target_func, self.engine, self.job_type,
-            self.name, self.tags, **self.job_attrs,
+            self.name, self.description, self.tags, **self.job_attrs,
         )
 
 
@@ -144,7 +144,8 @@ def task(
         async_mode: bool = False,
         job_type: JOB_TYPES = 'process',
         name: T.Optional[str] = None,
-        tags: T.Optional[T.List] = None,
+        description: T.Optional[str] = None,
+        tags: T.Optional[T.List[str]] = None,
         **job_attrs):
     if func is None:
         return functools.partial(
@@ -155,6 +156,7 @@ def task(
     if engine is None:
         engine = get_engine()
 
+    task_cls: T.Union[T.Type[AsyncTask], T.Type[SyncTask]]
     if async_mode:
         task_cls = AsyncTask
     else:
@@ -162,5 +164,5 @@ def task(
 
     return task_cls(
         func, engine, job_type,
-        name, tags, **job_attrs,
+        name, description, tags, **job_attrs,
     )

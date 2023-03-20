@@ -74,8 +74,7 @@ setup(
     classifiers=classifiers,
     install_requires=get_install_requires(),
     extras_require={
-        'test': requires_test,
-        'dev': requires_dev,
+        'dev': requires_dev + requires_dask,
         'dask': requires_dask,
         'all': requires_dask,
     },

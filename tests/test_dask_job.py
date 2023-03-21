@@ -3,9 +3,10 @@ import time
 
 import pytest
 
-from executor.engine.core import Engine
+from executor.engine.core import Engine, EngineSetting
 from executor.engine.job.dask import DaskJob
-from dask.distributed import Client
+from executor.engine.utils import PortManager
+from dask.distributed import Client, LocalCluster
 
 
 def test_submit_job():
@@ -24,7 +25,9 @@ def test_submit_job():
 
 
 def test_exception():
-    engine = Engine()
+    engine = Engine(
+        setting=EngineSetting(print_traceback=False)
+    )
 
     def error_func():
         raise ValueError("error")
@@ -65,7 +68,9 @@ def test_set_client():
         assert engine.dask_client is client
         await asyncio.sleep(0.1)
         await client.close()
-        client = Client()
+        port = PortManager.find_free_port()
+        cluster = LocalCluster(dashboard_address=f":{port}")
+        client = Client(cluster)
         with pytest.raises(ValueError):
             engine.dask_client = client
         client.close()

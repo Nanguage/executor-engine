@@ -64,7 +64,7 @@ class TaskBase(object):
         return job
 
     async def submit_and_wait(self, job: 'Job') -> T.Any:
-        await self.engine.submit(job)
+        await self.engine.submit_async(job)
         await job.join()
         return job.result()
 
@@ -124,7 +124,7 @@ class AsyncTask(TaskBase):
 
     async def submit(self, *args, **kwargs):
         job = self.create_job(args, kwargs)
-        await self.engine.submit(job)
+        await self.engine.submit_async(job)
         return job
 
     async def __call__(self, *args, **kwargs) -> T.Any:

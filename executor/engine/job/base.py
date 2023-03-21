@@ -28,7 +28,7 @@ def get_callable_name(callable) -> str:
         return getattr(callable, "__name__")
     elif hasattr(callable, "__class__"):
         return getattr(callable, "__class__").__name__
-    else:
+    else:  # pragma: no cover
         return str(callable)
 
 
@@ -43,7 +43,6 @@ class Job(ExecutorObj):
             kwargs: T.Optional[dict] = None,
             callback: T.Optional[T.Callable[[T.Any], None]] = None,
             error_callback: T.Optional[T.Callable[[Exception], None]] = None,
-            print_traceback: bool = True,
             retries: int = 0,
             retry_time_delta: float = 0.0,
             name: T.Optional[str] = None,
@@ -59,7 +58,6 @@ class Job(ExecutorObj):
         self.kwargs = kwargs or {}
         self.callback = callback
         self.error_callback = error_callback
-        self.print_traceback = print_traceback
         self.retries = retries
         self.retry_count = 0
         self.retry_time_delta = retry_time_delta
@@ -169,7 +167,7 @@ class Job(ExecutorObj):
         self.status = "pending"
         await self.emit()
 
-    async def _on_finish(self, new_status: JobStatusType = "done"):
+    def _on_finish(self, new_status: JobStatusType = "done"):
         self.status = new_status
         self.release_resource()
 
@@ -177,16 +175,17 @@ class Job(ExecutorObj):
         logger.info(f"Job {self} done.")
         if self.callback is not None:
             self.callback(res)
-        await self._on_finish("done")
+        self._on_finish("done")
 
     async def on_failed(self, e: Exception):
         logger.error(f"Job {self} failed: {repr(e)}")
-        if self.print_traceback:
+        assert self.engine is not None
+        if self.engine.print_traceback:
             logger.exception(e)
         self._exception = e
         if self.error_callback is not None:
             self.error_callback(e)
-        await self._on_finish("failed")
+        self._on_finish("failed")
         if self.retry_count < self.retries:
             self.retry_count += 1
             await asyncio.sleep(self.retry_time_delta)
@@ -201,7 +200,7 @@ class Job(ExecutorObj):
             except Exception as e:  # pragma: no cover
                 print(str(e))
             finally:
-                await self._on_finish("canceled")
+                self._on_finish("canceled")
         elif self.status == "pending":
             self.status = "canceled"
 

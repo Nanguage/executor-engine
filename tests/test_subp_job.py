@@ -1,6 +1,6 @@
 import asyncio
 
-from executor.engine.core import Engine
+from executor.engine.core import Engine, EngineSetting
 from executor.engine.job.extend.subprocess import SubprocessJob
 from executor.engine.job.condition import AfterAnother
 
@@ -10,13 +10,13 @@ def test_run_cmd():
 
     async def submit_job():
         job = SubprocessJob("python -c 'print(1 + 1)'")
-        await engine.submit(job)
+        await engine.submit_async(job)
         await job.join()
         assert job.status == "done"
         assert job.result() == 0
 
         job = SubprocessJob("python -c 'print(1 + a)'")
-        await engine.submit(job)
+        await engine.submit_async(job)
         await job.join()
         assert job.status == "failed"
 
@@ -24,18 +24,20 @@ def test_run_cmd():
 
 
 def test_capture_stdout_stderr():
-    engine = Engine()
+    engine = Engine(
+        setting=EngineSetting(print_traceback=False)
+    )
 
     async def submit_job():
         job = SubprocessJob("python -c 'print(1 + 1)'", redirect_out_err=True)
-        await engine.submit(job)
+        await engine.submit_async(job)
         await job.join()
         assert job.result() == 0
         with open(job.cache_dir / 'stdout.txt') as f:
             assert f.read().strip() == '2'
 
         job = SubprocessJob("python -c 'print(1 + a)'", redirect_out_err=True)
-        await engine.submit(job)
+        await engine.submit_async(job)
         await job.join()
         assert job.status == "failed"
         with open(job.cache_dir / 'stderr.txt') as f:
@@ -50,7 +52,7 @@ def test_record_command():
     async def submit_job():
         cmd = "python -c 'print(1 + 1)'"
         job = SubprocessJob(cmd, record_cmd=True, error_callback=lambda err: print(err))
-        await engine.submit(job)
+        await engine.submit_async(job)
         await job.join()
         assert job.result() == 0
         with open(job.cache_dir / "command.sh") as f:
@@ -71,10 +73,10 @@ def test_condition():
         job1 = SubprocessJob(cmd, callback=lambda _: append(1), )
         job2 = SubprocessJob(cmd, callback=lambda _: append(2), condition=AfterAnother(job_id=job1.id))
         job3 = SubprocessJob(cmd, callback=lambda _: append(3), condition=AfterAnother(job_id=job2.id))
-        await engine.submit(job3)
-        await engine.submit(job2)
-        await engine.submit(job1)
-        await engine.wait_job()
+        await engine.submit_async(job3)
+        await engine.submit_async(job2)
+        await engine.submit_async(job1)
+        await engine.join()
         assert lis == [1, 2, 3]
 
     asyncio.run(submit_job())

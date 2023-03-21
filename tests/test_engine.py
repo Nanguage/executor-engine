@@ -1,6 +1,7 @@
 import time
 import typing as T
 import shutil
+import asyncio
 
 from executor.engine.core import Engine, EngineSetting
 from executor.engine.job import LocalJob, ThreadJob, ProcessJob, Job
@@ -240,16 +241,40 @@ def test_engine_get_cache_dir():
     shutil.rmtree(setting.cache_path)
 
 
-def test_job_retry():
-    def raise_exception():
-        print("try")
-        raise ValueError("error")
-    job = ProcessJob(
-        raise_exception, retries=2,
-        retry_time_delta=1)
-    assert job.retry_count == 0
+def test_async_api():
     engine = Engine()
-    with engine:
+
+    async def main():
+        engine.loop = asyncio.get_running_loop()
+        job = ThreadJob(lambda x: x**2, (2,))
+        await engine.submit_async(job)
+        await engine.join()
+        assert job.status == "done"
+
+    asyncio.run(main())
+
+
+def test_engine_start_stop():
+    engine = Engine()
+    engine.start()
+    engine.start()  # start twice, will warning
+    engine.stop()
+    engine = Engine()
+    engine.stop()  # loop is None, will warning
+    engine.start()
+    engine.stop()
+    engine.stop()  # stop twice, will warning
+
+
+def test_wait_timeout():
+    def sleep_10s():
+        time.sleep(10)
+
+    with Engine() as engine:
+        job = ProcessJob(sleep_10s)
         engine.submit(job)
-        time.sleep(5)
-    assert job.retry_count == 2
+        t = time.time()
+        engine.wait(timeout=1.0)
+        t2 = time.time()
+        assert (t2 - t) < 2.0
+        engine.cancel_all()

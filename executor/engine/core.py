@@ -23,6 +23,7 @@ class EngineSetting:
     max_dask_jobs: T.Optional[int] = None
     max_jobs: T.Optional[int] = 20
     cache_path: T.Optional[str] = None
+    print_traceback: bool = True
 
 
 @dataclass
@@ -44,6 +45,7 @@ class Engine(ExecutorObj):
         if setting is None:
             setting = EngineSetting()
         self.setting = setting
+        self.print_traceback = False
         self.setup_by_setting()
         if jobs is None:
             jobs = Jobs(self.cache_dir / "jobs")
@@ -90,23 +92,24 @@ class Engine(ExecutorObj):
     def stop(self):
         """Stop event loop thread."""
         loop = self._loop
-        if loop is None:
-            logger.warning(f"Event loop of {self} is not created.")
+        if (loop is None) or (self._loop_thread is None):
+            logger.warning(f"Event loop thread of {self} is not running.")
+            return
+
+        if not self._loop_thread.is_alive():
+            logger.warning(f"Event loop thread of {self} is already closed.")
         else:
-            if loop.is_closed():
-                logger.warning(f"Event loop of {self} is already closed.")
-            else:
-                logger.info(f"{self} stop event loop.")
-                loop.call_soon_threadsafe(loop.stop())
-                self._loop_thread.join()
-                if self._dask_client is not None:
-                    asyncio.run_coroutine_threadsafe(
-                        self._dask_client.close(), loop)
+            logger.info(f"{self} stop event loop.")
+            loop.call_soon_threadsafe(loop.stop())
+            self._loop_thread.join()
+            if self._dask_client is not None:
+                asyncio.run_coroutine_threadsafe(
+                    self._dask_client.close(), loop)
 
     def __enter__(self):
         self.start()
         return self
-    
+
     def __exit__(self, *args):
         self.stop()
 
@@ -120,12 +123,14 @@ class Engine(ExecutorObj):
             n_job=setting.max_jobs or float('inf'),
         )
         self.cache_dir = self.get_cache_dir()
+        self.print_traceback = setting.print_traceback
 
     def submit(self, job: Job) -> Future:
         """Submit job to engine and return a future object."""
         fut = asyncio.run_coroutine_threadsafe(
             self.submit_async(job), self.loop)
         fut.result()
+
         async def wait_run():
             await job.join()
             if job.status == "done":

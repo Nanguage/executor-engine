@@ -28,8 +28,8 @@
 - [x] Task design.
 - [x] Job retry.
 - [x] Dask job.
-- [ ] Change engine's API to sync mode.
-- [ ] Logging system.
+- [x] Change engine's API to sync mode.
+- [x] Logging system.
 
 
 ## Related Projects

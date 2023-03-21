@@ -3,7 +3,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 import pytest
 
-from executor.engine.core import Engine
+from executor.engine.core import Engine, EngineSetting
 from executor.engine.job.extend.webapp import WebAppJob
 from executor.engine.job.condition import AfterAnother
 
@@ -12,6 +12,9 @@ def run_simple_httpd(ip: str, port: int):
     server_addr = (ip, port)
     httpd = HTTPServer(server_addr, SimpleHTTPRequestHandler)
     httpd.serve_forever()
+
+
+setting = EngineSetting(print_traceback=False)
 
 
 def test_run_webapp():
@@ -28,7 +31,7 @@ def test_run_webapp():
             job = WebAppJob(1)
 
         job = WebAppJob(run_simple_httpd, ip="127.0.0.1", port=8001, check_delta=0.5)
-        await engine.submit(job)
+        await engine.submit_async(job)
         await asyncio.sleep(5)
         assert job.port == 8001
         assert job.status == "running"
@@ -39,7 +42,7 @@ def test_run_webapp():
 
 
 def test_port_check():
-    engine = Engine()
+    engine = Engine(setting=setting)
 
     def run_error_httpd(ip: str, port: int):
         server_addr = (ip, port + 1)
@@ -48,7 +51,7 @@ def test_port_check():
 
     async def submit_job():
         job = WebAppJob(run_error_httpd, ip="127.0.0.1", check_delta=0.5)
-        await engine.submit(job)
+        await engine.submit_async(job)
         await asyncio.sleep(5)
         assert job.status == "failed"
 
@@ -60,7 +63,7 @@ def test_launch_from_cmd():
 
     async def submit_job():
         job = WebAppJob("python -m http.server -b {ip} {port}")
-        await engine.submit(job)
+        await engine.submit_async(job)
         await asyncio.sleep(5)
         assert job.status == "running"
         await job.cancel()
@@ -70,11 +73,11 @@ def test_launch_from_cmd():
 
 
 def test_launch_from_cmd_port_check():
-    engine = Engine()
+    engine = Engine(setting=setting)
 
     async def submit_job():
         job = WebAppJob("python -m http.server -b {ip} {port}1")
-        await engine.submit(job)
+        await engine.submit_async(job)
         await asyncio.sleep(10)
         assert job.status == "failed"
 

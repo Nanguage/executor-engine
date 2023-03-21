@@ -49,8 +49,16 @@ def test_sync_chain():
     fut2 = add.submit(fut, 2)
     assert fut2.result() == 5
     fut1 = add.submit(1, 2)
-    fut2 = add.submit(a=fut1.result(), b=fut1.result())
+    fut2 = add.submit(a=fut1, b=fut1)
     assert fut2.result() == 6
+
+
+def test_sync_task_call():
+    @task
+    def add(a, b):
+        return a + b
+
+    assert add(1, 2) == 3
 
 
 def test_async_task_run():
@@ -65,6 +73,9 @@ def test_async_task_run():
         a = await add(1, 2)
         b = await add(a, 2)
         assert b == 5
+        job = await add.submit(1, 2)
+        await job.join()
+        assert job.result() == 3
 
     asyncio.run(main())
 

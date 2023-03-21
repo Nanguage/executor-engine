@@ -1,12 +1,21 @@
 import functools
 
-from dask.distributed import Client
+from dask.distributed import Client, LocalCluster
 
 from .base import Job
+from ..utils import PortManager
 
 
 def get_default_client() -> Client:
-    return Client(asynchronous=True)
+    free_port = PortManager.find_free_port()
+    cluster = LocalCluster(
+        dashboard_address=f":{free_port}",
+        asynchronous=True,
+    )
+    return Client(
+        cluster,
+        asynchronous=True,
+    )
 
 
 class DaskJob(Job):

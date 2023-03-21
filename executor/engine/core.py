@@ -100,7 +100,7 @@ class Engine(ExecutorObj):
             logger.warning(f"Event loop thread of {self} is already closed.")
         else:
             logger.info(f"{self} stop event loop.")
-            loop.call_soon_threadsafe(loop.stop())
+            loop.call_soon_threadsafe(loop.stop)
             self._loop_thread.join()
             if self._dask_client is not None:
                 asyncio.run_coroutine_threadsafe(
@@ -192,7 +192,8 @@ class Engine(ExecutorObj):
         """Block until all jobs are finished or timeout."""
         total_time = timeout if timeout is not None else float('inf')
         while True:
-            if len(self.jobs.running) == 0:
+            n_wait_jobs = len(self.jobs.running) + len(self.jobs.pending)
+            if n_wait_jobs == 0:
                 break
             if total_time <= 0:
                 break

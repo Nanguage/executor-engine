@@ -9,22 +9,18 @@ from dask.distributed import Client
 
 
 def test_submit_job():
-    engine = Engine()
     job = DaskJob(lambda x: x**2, (2,))
     assert job.has_resource() is False
     assert job.consume_resource() is False
     assert job.release_resource() is False
     job2 = DaskJob(lambda x: x**2, (3,))
 
-    async def main():
-        await engine.submit(job)
-        await engine.submit(job2)
-        await engine.wait()
+    with Engine() as engine:
+        engine.submit(job)
+        engine.submit(job2)
+        engine.wait()
         assert job.result() == 4
         assert job2.result() == 9
-        await engine.dask_client.close()
-
-    asyncio.run(main())
 
 
 def test_exception():
@@ -35,8 +31,8 @@ def test_exception():
     job = DaskJob(error_func)
 
     async def main():
-        await engine.submit(job)
-        await engine.wait()
+        await engine.submit_async(job)
+        await engine.join()
         assert job.status == "failed"
         await engine.dask_client.close()
 
@@ -51,10 +47,9 @@ def test_cancel_job():
     job = DaskJob(sleep_func)
 
     async def main():
-        await engine.submit(job)
+        await engine.submit_async(job)
         await asyncio.sleep(1)
         await job.cancel()
-        await engine.wait()
         assert job.status == "canceled"
         await engine.dask_client.close()
 

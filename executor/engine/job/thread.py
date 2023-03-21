@@ -36,22 +36,18 @@ class ThreadJob(Job):
             )
 
     async def run(self):
-        self.executor = executor = ThreadPoolExecutor(1)
+        self._executor = ThreadPoolExecutor(1)
         loop = asyncio.get_running_loop()
         func = functools.partial(self.func, **self.kwargs)
-        try:
-            fut = loop.run_in_executor(executor, func, *self.args)
-            result = await fut
-            await self.on_done(result)
-            return result
-        except Exception as e:
-            await self.on_failed(e)
+        fut = loop.run_in_executor(self._executor, func, *self.args)
+        result = await fut
+        return result
 
     async def cancel(self):
         if self.status == "running":
-            self.executor.shutdown()
+            self._executor.shutdown()
         await super().cancel()
 
     def clear_context(self):
-        self.executor.shutdown()
-        self.executor = None
+        self._executor.shutdown()
+        self._executor = None

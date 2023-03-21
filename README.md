@@ -27,7 +27,7 @@
 
 - [x] Task design.
 - [x] Job retry.
-- [ ] Dask job.
+- [x] Dask job.
 - [ ] Change engine's API to sync mode.
 - [ ] Logging system.
 

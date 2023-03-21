@@ -42,19 +42,15 @@ class DaskJob(Job):
     async def run(self):
         client = self.engine.dask_client
         func = functools.partial(self.func, **self.kwargs)
-        try:
-            fut = client.submit(func, *self.args)
-            self.executor = fut
-            result = await fut
-            await self.on_done(result)
-            return result
-        except Exception as e:
-            await self.on_failed(e)
+        fut = client.submit(func, *self.args)
+        self._executor = fut
+        result = await fut
+        return result
 
     async def cancel(self):
         if self.status == "running":
-            await self.executor.cancel()
+            await self._executor.cancel()
         await super().cancel()
 
     def clear_context(self):
-        self.executor = None
+        self._executor = None

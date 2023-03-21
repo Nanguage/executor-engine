@@ -74,7 +74,7 @@ def test_condition():
         await engine.submit(job3)
         await engine.submit(job2)
         await engine.submit(job1)
-        await engine.wait()
+        await engine.wait_job()
         assert lis == [1, 2, 3]
 
     asyncio.run(submit_job())

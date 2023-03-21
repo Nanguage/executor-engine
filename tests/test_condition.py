@@ -20,15 +20,16 @@ def test_after_another_cond():
         job1 = LocalJob(id_func, (1,), callback=append)
         job2 = ThreadJob(id_func, (2,), callback=append, condition=AfterAnother(job_id=job1.id))
         job3 = ProcessJob(id_func, (3,), callback=append, condition=AfterAnother(job_id=job2.id))
-        await engine.submit(job3)
-        await engine.submit(job2)
-        await engine.submit(job1)
-        await engine.wait()
+        await engine.submit_async(job3)
+        await engine.submit_async(job2)
+        await engine.submit_async(job1)
+        await engine.join()
         assert lis == [1, 2, 3]
         job4 = ThreadJob(id_func, (4,), callback=append, condition=AfterAnother(job_id="not_exist"))
-        await engine.submit(job4)
-        await engine.wait(timeout=1.0)
+        await engine.submit_async(job4)
+        await job4.join(timeout=0.1)
         assert len(lis) == 3
+        await job4.cancel()
 
     asyncio.run(submit_job())
 
@@ -45,15 +46,15 @@ def test_after_others_all_mode():
             assert 1 in s
             assert 2 in s
         job3 = ThreadJob(has_1_2, condition=AfterOthers(job_ids=[job1.id, job2.id], mode='all'))
-        await engine.submit(job3)
-        await engine.submit(job2)
-        await engine.submit(job1)
-        await engine.wait()
+        await engine.submit_async(job3)
+        await engine.submit_async(job2)
+        await engine.submit_async(job1)
+        await engine.join()
         job4 = ThreadJob(lambda: s.add(3), condition=AfterOthers(job_ids=["not_exist"]))
-        await engine.submit(job4)
-        await engine.wait(timeout=1.0)
+        await engine.submit_async(job4)
+        await engine.join(timeout=0.1)
         assert len(s) == 2
-        await engine.remove(job4)
+        await job4.cancel()
 
     asyncio.run(submit_job())
 
@@ -69,10 +70,10 @@ def test_after_others_any_mode():
         def has_1_or_2():
             assert 1 in s or 2 in s
         job3 = ThreadJob(has_1_or_2, condition=AfterOthers(job_ids=[job1.id, job2.id], mode="any"))
-        await engine.submit(job3)
-        await engine.submit(job2)
-        await engine.submit(job1)
-        await engine.wait()
+        await engine.submit_async(job3)
+        await engine.submit_async(job2)
+        await engine.submit_async(job1)
+        await engine.join()
 
     asyncio.run(submit_job())
 
@@ -87,8 +88,8 @@ def test_after_timepoint():
         def assert_after():
             assert datetime.now() > t2
         job = ThreadJob(assert_after, condition=AfterTimepoint(timepoint=t2))
-        await engine.submit(job)
-        await engine.wait()
+        await engine.submit_async(job)
+        await engine.join()
 
     asyncio.run(submit_job())
 
@@ -98,19 +99,24 @@ def test_any_satisfy():
 
     s = set()
 
+    def run_forever():
+        while True:
+            1 + 1
+
     async def submit_job():
         job1 = ThreadJob(lambda: s.add(1))
-        job2 = ThreadJob(lambda: s.add(2))
+        job2 = ProcessJob(run_forever)
         def has_one_element():
             assert len(s) == 1
         job3 = ThreadJob(has_one_element, condition=AnySatisfied(conditions=[
             AfterAnother(job_id=job1.id),
             AfterAnother(job_id=job2.id)
         ]))
-        await engine.submit(job3)
-        await engine.submit(job2)
-        await engine.submit(job1)
-        await engine.wait()
+        await engine.submit_async(job3)
+        await engine.submit_async(job2)
+        await engine.submit_async(job1)
+        await engine.join(timeout=1.0)
+        await job2.cancel()
 
     asyncio.run(submit_job())
 
@@ -129,9 +135,9 @@ def test_all_satisfy():
             AfterAnother(job_id=job1.id),
             AfterAnother(job_id=job2.id)
         ]))
-        await engine.submit(job3)
-        await engine.submit(job2)
-        await engine.submit(job1)
-        await engine.wait()
+        await engine.submit_async(job3)
+        await engine.submit_async(job2)
+        await engine.submit_async(job1)
+        await engine.join()
 
     asyncio.run(submit_job())

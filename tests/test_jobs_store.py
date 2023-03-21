@@ -19,8 +19,8 @@ def test_jobs_cache():
             job = job_cls(
                 lambda x: x**2, (2,),
                 error_callback=lambda err: traceback.print_exc())
-            await engine.submit(job)
-        await engine.wait()
+            await engine.submit_async(job)
+        await engine.join()
 
     asyncio.run(submit_job())
     assert len(engine.jobs.done.cache) == 3

@@ -13,10 +13,23 @@ from .utils import (
 from .condition import Condition
 from ..middle.capture import CaptureOut
 from ..middle.dir import ChDir
+from ..log import logger
 
 
 if T.TYPE_CHECKING:
     from ..core import Engine
+
+
+def get_callable_name(callable) -> str:
+    if hasattr(callable, "func"):
+        inner_func = getattr(callable, "func")
+        return get_callable_name(inner_func)
+    elif hasattr(callable, "__name__"):
+        return getattr(callable, "__name__")
+    elif hasattr(callable, "__class__"):
+        return getattr(callable, "__class__").__name__
+    else:
+        return str(callable)
 
 
 class Job(ExecutorObj):
@@ -30,6 +43,7 @@ class Job(ExecutorObj):
             kwargs: T.Optional[dict] = None,
             callback: T.Optional[T.Callable[[T.Any], None]] = None,
             error_callback: T.Optional[T.Callable[[Exception], None]] = None,
+            print_traceback: bool = True,
             retries: int = 0,
             retry_time_delta: float = 0.0,
             name: T.Optional[str] = None,
@@ -45,6 +59,7 @@ class Job(ExecutorObj):
         self.kwargs = kwargs or {}
         self.callback = callback
         self.error_callback = error_callback
+        self.print_traceback = print_traceback
         self.retries = retries
         self.retry_count = 0
         self.retry_time_delta = retry_time_delta
@@ -60,18 +75,20 @@ class Job(ExecutorObj):
         self.created_time: datetime = datetime.now()
         self.submit_time: T.Optional[datetime] = None
         self.stoped_time: T.Optional[datetime] = None
-        self.executor = None
+        self._executor: T.Any = None
+        self._exception: T.Optional[Exception] = None
 
     def __repr__(self) -> str:
+        func_name = get_callable_name(self.func)
         attrs = [
             f"status={self.status}",
             f"id={self.id}",
-            f"func={self.func}",
+            f"func={func_name}",
         ]
         if self.condition:
-            attrs.append(f" condition={self.condition}")
+            attrs.append(f" condition={repr(self.condition)}")
         attr_str = " ".join(attrs)
-        return f"<{self.__class__.__name__} {attr_str}/>"
+        return f"<{self.__class__.__name__} {attr_str}>"
 
     def __str__(self) -> str:
         return repr(self)
@@ -105,6 +122,7 @@ class Job(ExecutorObj):
             return self.has_resource()
 
     async def emit(self) -> asyncio.Task:
+        logger.info(f"Emit job {self}, watting for run.")
         if self.status != 'pending':
             raise JobEmitError(
                 f"{self} is not in valid status(pending)")
@@ -126,10 +144,16 @@ class Job(ExecutorObj):
     async def wait_and_run(self):
         while True:
             if self.runnable() and self.consume_resource():
+                logger.info(f"Start run job {self}")
                 self.process_func()
                 self.status = "running"
-                res = await self.run()
-                return res
+                try:
+                    res = await self.run()
+                    await self.on_done(res)
+                    return res
+                except Exception as e:
+                    await self.on_failed(e)
+                    break
             else:
                 await asyncio.sleep(self.wait_time_delta)
 
@@ -141,18 +165,25 @@ class Job(ExecutorObj):
         if self.status not in _valid_status:
             raise JobEmitError(
                 f"{self} is not in valid status({_valid_status})")
-        await self.engine.submit(self)
+        logger.info(f"Rerun job {self}")
+        self.status = "pending"
+        await self.emit()
 
     async def _on_finish(self, new_status: JobStatusType = "done"):
         self.status = new_status
         self.release_resource()
 
     async def on_done(self, res):
+        logger.info(f"Job {self} done.")
         if self.callback is not None:
             self.callback(res)
         await self._on_finish("done")
 
     async def on_failed(self, e: Exception):
+        logger.error(f"Job {self} failed: {repr(e)}")
+        if self.print_traceback:
+            logger.exception(e)
+        self._exception = e
         if self.error_callback is not None:
             self.error_callback(e)
         await self._on_finish("failed")
@@ -162,6 +193,7 @@ class Job(ExecutorObj):
             await self.rerun()
 
     async def cancel(self):
+        logger.info(f"Cancel job {self}.")
         self.task.cancel()
         if self.status == "running":
             try:
@@ -184,11 +216,14 @@ class Job(ExecutorObj):
         else:
             raise InvalidStateError(f"{self} is not emitted.")
 
+    def exception(self):
+        return self._exception
+
     def serialization(self) -> bytes:
         job = copy(self)
         job.task = None
         job.engine = None
-        job.executor = None
+        job._executor = None
         bytes_ = cloudpickle.dumps(job)
         return bytes_
 
@@ -197,10 +232,10 @@ class Job(ExecutorObj):
         job: "Job" = cloudpickle.loads(bytes_)
         return job
 
-    async def join(self):
+    async def join(self, timeout: T.Optional[float] = None):
         if self.task is None:
             raise InvalidStateError(f"{self} is not emitted.")
-        await self.task
+        await asyncio.wait([self.task], timeout=timeout)
 
     @property
     def cache_dir(self) -> T.Optional[Path]:

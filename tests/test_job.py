@@ -7,6 +7,7 @@ from executor.engine.core import Engine
 from executor.engine.job import LocalJob, ThreadJob, ProcessJob
 from executor.engine.job.base import get_callable_name
 from executor.engine.job.base import JobEmitError, InvalidStateError
+from executor.engine.job.condition import AfterAnother, AllSatisfied
 
 
 def test_corner_cases():
@@ -56,10 +57,10 @@ def test_result_fetch_error():
 
     async def submit_job():
         with pytest.raises(InvalidStateError):
-            await job.result()
+            job.result()
         await engine.submit_async(job)
         with pytest.raises(InvalidStateError):
-            await job.result()
+            job.result()
 
     asyncio.run(submit_job())
 
@@ -96,3 +97,35 @@ def test_get_callable_name():
             self.func = func
 
     assert get_callable_name(B(a)) == "a"
+
+
+def test_dependency():
+    def add(a, b):
+        return a + b
+
+    with Engine() as engine:
+        job1 = ProcessJob(add, (1, 2))
+        job2 = ProcessJob(add, (job1.future, 3))
+        engine.submit(job1)
+        engine.submit(job2)
+        engine.wait_job(job2)
+        assert job2.result() == 6
+
+
+def test_dependency_2():
+    def add(a, b):
+        return a + b
+
+    with Engine() as engine:
+        job1 = ProcessJob(add, (1, 2))
+        job2 = ProcessJob(add, (job1.future, 3))
+        job3 = ProcessJob(
+            add, (job2.future, 4),
+            condition=AfterAnother(job_id=job1.id)
+        )
+        engine.submit(job3)
+        engine.submit(job2)
+        engine.submit(job1)
+        assert isinstance(job3.condition, AllSatisfied)
+        engine.wait_job(job3)
+        assert job3.result() == 10

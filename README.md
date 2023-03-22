@@ -41,7 +41,7 @@ By harnessing the capabilities of Executor Engine, users can effortlessly constr
   * Auto retry on failure.
   * Serilization and deserialization.
 + Support conditional job execution.
-  * `AfterAnother`, `AfterOthers`: After another job or jobs done/failed/canceled.
+  * `AfterAnother`, `AfterOthers`: After another job or jobs done/failed/cancelled.
   * `AfterTimepoint`: After a time point.
   * Condition combination:
     - `AllSatisfied`: All conditions are met.
@@ -325,8 +325,8 @@ with Engine() as engine:
 - [x] Change engine's API to sync mode.
 - [x] Logging system.
 - [x] Support run in jupyter notebook.
-- [ ] Job dependency(rely on other job's result).
-- [ ] Allow cache result on disk.
+- [x] Job dependency(rely on other job's result).
+- [x] Allow cache result on disk.
 - [ ] Documentation.
 
 

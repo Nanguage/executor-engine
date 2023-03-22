@@ -5,8 +5,6 @@ from executor.engine.utils import (
     CheckAttrRange,
     CheckAttrType,
     PortManager,
-)
-from executor.engine.error import (
     RangeCheckError, TypeCheckError
 )
 

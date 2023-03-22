@@ -1,15 +1,14 @@
 import typing as T
 from datetime import datetime
 
-from ..utils import CheckAttrRange
-from ..error import ExecutorError
+from ..utils import CheckAttrRange, ExecutorError
 
 
 if T.TYPE_CHECKING:
     from .base import Job
 
 
-JobStatusType = T.Literal['pending', 'running', 'failed', 'done', 'canceled']
+JobStatusType = T.Literal['pending', 'running', 'failed', 'done', 'cancelled']
 valid_job_statuses = JobStatusType.__args__  # type: ignore
 
 
@@ -24,7 +23,7 @@ class JobStatusAttr(CheckAttrRange):
         if obj.engine is not None:
             obj.engine.jobs.move_job_store(
                 obj, value, old_status)
-        if value in ('done', 'failed', 'canceled'):
+        if value in ('done', 'failed', 'cancelled'):
             obj.stoped_time = datetime.now()
 
 

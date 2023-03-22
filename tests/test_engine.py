@@ -56,7 +56,8 @@ def test_get_job_result():
         for job_cls in test_job_cls:
             job: Job = job_cls(lambda x: x**2, (2,))
             fut = engine.submit(job)
-            assert fut.result() == 4
+            res = engine.wait_job(fut)
+            assert res == 4
 
 
 def test_parallel():
@@ -87,7 +88,7 @@ def test_cancel_job():
             # cancel running
             engine.submit(job)
             engine.cancel(job)
-            assert job.status == "canceled"
+            assert job.status == "cancelled"
 
 
 def test_cancel_pending():
@@ -101,9 +102,9 @@ def test_cancel_pending():
         engine.submit(job2)
         assert job2.status == "pending"
         engine.cancel(job2)
-        assert job2.status == "canceled"
+        assert job2.status == "cancelled"
         engine.cancel(job1)
-        assert job1.status == "canceled"
+        assert job1.status == "cancelled"
 
 
 def test_cancel_all():
@@ -117,7 +118,7 @@ def test_cancel_all():
                 assert job.status == "running"
         engine.cancel_all()
         for job in engine.jobs:
-            assert job.status == "canceled"
+            assert job.status == "cancelled"
 
 
 def test_re_submit_job():
@@ -183,6 +184,7 @@ def test_capture_stdout_stderr():
             engine.submit(job)
             engine.wait_job(job)
             assert job.status == "failed"
+            assert isinstance(job.exception(), ValueError)
             read_stderr(job)
 
 

@@ -4,10 +4,19 @@ from pathlib import Path
 from diskcache import Cache
 
 from .job.base import Job
-from .job.utils import valid_job_statuses, JobStatusType
+from .job.utils import (
+    valid_job_statuses, JobStatusType, ExecutorError
+)
 
 if T.TYPE_CHECKING:
     from .core import Engine
+
+
+class JobNotFoundError(ExecutorError):
+    """Job not found error."""
+    def __init__(self, job_id: str):
+        self.job_id = job_id
+        super().__init__(f"Job {job_id} not found.")
 
 
 class JobStore():
@@ -111,7 +120,7 @@ class Jobs:
         self.running = self._stores['running']
         self.done = self._stores['done']
         self.failed = self._stores['failed']
-        self.canceled = self._stores['canceled']
+        self.cancelled = self._stores['cancelled']
 
     def set_engine(self, engine: "Engine"):
         for job in self.all_jobs():
@@ -122,7 +131,7 @@ class Jobs:
             self._stores[s].clear()
 
     def clear_non_active(self):
-        self.clear(["done", "failed", "canceled"])
+        self.clear(["done", "failed", "cancelled"])
 
     def clear_all(self):
         self.clear(self.valid_statuses)
@@ -149,19 +158,23 @@ class Jobs:
         new_store = self._stores[new_status]
         new_store[job.id] = old_store.pop(job.id)
 
-    def get_job_by_id(self, job_id: str) -> T.Optional["Job"]:
+    def get_job_by_id(self, job_id: str) -> Job:
         for status in self.valid_statuses:
             store = self._stores[status]
             if job_id in store:
                 return store[job_id]
-        return None
+        raise JobNotFoundError(job_id)
 
     def __contains__(self, job: T.Union[str, Job]):
         if isinstance(job, Job):
             job_id = job.id
         else:
             job_id = job
-        return self.get_job_by_id(job_id) is not None
+        try:
+            self.get_job_by_id(job_id)
+            return True
+        except JobNotFoundError:
+            return False
 
     def all_jobs(self) -> T.List[Job]:
         return list(iter(self))

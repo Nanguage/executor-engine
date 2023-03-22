@@ -36,7 +36,7 @@ def test_run_webapp():
         assert job.port == 8001
         assert job.status == "running"
         await job.cancel()
-        assert job.status == "canceled"
+        assert job.status == "cancelled"
 
     asyncio.run(submit_job())
 
@@ -67,7 +67,7 @@ def test_launch_from_cmd():
         await asyncio.sleep(5)
         assert job.status == "running"
         await job.cancel()
-        assert job.status == "canceled"
+        assert job.status == "cancelled"
     
     asyncio.run(submit_job())
 

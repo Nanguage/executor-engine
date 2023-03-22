@@ -3,17 +3,19 @@ import typing as T
 from datetime import datetime
 from pathlib import Path
 from copy import copy
+import itertools
 
 import cloudpickle
 
-from ..base import ExecutorObj
 from .utils import (
     JobStatusAttr, JobEmitError, InvalidStateError, JobStatusType,
+    ExecutorError,
 )
-from .condition import Condition
+from .condition import Condition, AfterOthers, AllSatisfied
 from ..middle.capture import CaptureOut
 from ..middle.dir import ChDir
 from ..log import logger
+from ..base import ExecutorObj
 
 
 if T.TYPE_CHECKING:
@@ -30,6 +32,26 @@ def get_callable_name(callable) -> str:
         return getattr(callable, "__class__").__name__
     else:  # pragma: no cover
         return str(callable)
+
+
+class JobFuture():
+    def __init__(self, job_id: str) -> None:
+        self.job_id = job_id
+        self._result: T.Optional[T.Any] = None
+        self._exception: T.Optional[Exception] = None
+
+    def result(self) -> T.Any:
+        return self._result
+
+    def set_result(self, result: T.Any) -> None:
+        self._result = result
+
+    def exception(self) -> T.Optional[Exception]:
+        return self._exception
+
+    def set_exception(self, exception: Exception) -> None:
+        self._exception = exception
+
 
 
 class Job(ExecutorObj):
@@ -74,7 +96,8 @@ class Job(ExecutorObj):
         self.submit_time: T.Optional[datetime] = None
         self.stoped_time: T.Optional[datetime] = None
         self._executor: T.Any = None
-        self._exception: T.Optional[Exception] = None
+        self.dep_job_ids: T.List[str] = []
+        self.future = JobFuture(self.id)
 
     def __repr__(self) -> str:
         func_name = get_callable_name(self.func)
@@ -111,7 +134,61 @@ class Job(ExecutorObj):
             self.engine.resource.n_job += 1
             return True
 
+    def resolve_dependencies(self) -> None:
+        """Resolve args and kwargs
+        and auto specify the condition."""
+        dep_jobs_ids: T.List[str] = []
+        args = itertools.chain(self.args, self.kwargs.values())
+        for arg in args:
+            if isinstance(arg, JobFuture):
+                dep_jobs_ids.append(arg.job_id)
+        if len(dep_jobs_ids) > 0:
+            after_others = AfterOthers(dep_jobs_ids)
+            if self.condition is None:
+                self.condition = after_others
+            else:
+                self.condition = AllSatisfied([self.condition, after_others])
+        self.dep_job_ids = dep_jobs_ids
+
+    async def _resolve_arg(self, arg: T.Union[JobFuture, T.Any]) -> T.Any:
+        if isinstance(arg, JobFuture):
+            assert self.engine is not None
+            job = self.engine.jobs.get_job_by_id(arg.job_id)
+            if job.status == "done":
+                return job.result()
+            elif job.status == "error":
+                msg = f"Job {self} cancelled because of upstream job {job} failed."
+                logger.warning(msg)
+                await self.cancel()
+            elif job.status == "cancelled":
+                msg = f"Job {self} cancelled because of upstream job {job} cancelled."
+                logger.warning(msg)
+                await self.cancel()
+            else:  # pragma: no cover
+                raise ExecutorError("Unreachable code.")
+        else:
+            return arg
+
+    async def resolve_args(self):
+        """Resolve args and kwargs."""
+        if len(self.dep_job_ids) > 0:
+            args = []
+            kwargs = {}
+            for arg in self.args:
+                resolved = await self._resolve_arg(arg)
+                args.append(resolved)
+            for key, value in self.kwargs.items():
+                resolved = await self._resolve_arg(value)
+                kwargs[key] = self._resolve_arg(resolved)
+            self.args = tuple(args)
+            self.kwargs = kwargs
+
     def runnable(self) -> bool:
+        """Check if the job is runnable.
+        Job is runnable if:
+        1. engine is not None.
+        2. condition is None and condition is satisfied.
+        3. has resource."""
         if self.engine is None:
             return False
         if self.condition is not None:
@@ -124,6 +201,7 @@ class Job(ExecutorObj):
         if self.status != 'pending':
             raise JobEmitError(
                 f"{self} is not in valid status(pending)")
+        self.resolve_dependencies()
         self.submit_time = datetime.now()
         loop = asyncio.get_running_loop()
         task = loop.create_task(self.wait_and_run())
@@ -131,6 +209,10 @@ class Job(ExecutorObj):
         return task
 
     def process_func(self):
+        """Process(decorate) the target func, before run.
+        For example, let the func
+        change the dir, redirect the stdout and stderr
+        before the actual run."""
         cache_dir = self.cache_dir.resolve()
         if self.redirect_out_err and (not isinstance(self.func, CaptureOut)):
             path_stdout = cache_dir / 'stdout.txt'
@@ -144,6 +226,7 @@ class Job(ExecutorObj):
             if self.runnable() and self.consume_resource():
                 logger.info(f"Start run job {self}")
                 self.process_func()
+                await self.resolve_args()
                 self.status = "running"
                 try:
                     res = await self.run()
@@ -159,7 +242,7 @@ class Job(ExecutorObj):
         pass
 
     async def rerun(self):
-        _valid_status = ("canceled", "done", "failed")
+        _valid_status = ("cancelled", "done", "failed")
         if self.status not in _valid_status:
             raise JobEmitError(
                 f"{self} is not in valid status({_valid_status})")
@@ -173,6 +256,7 @@ class Job(ExecutorObj):
 
     async def on_done(self, res):
         logger.info(f"Job {self} done.")
+        self.future.set_result(res)
         if self.callback is not None:
             self.callback(res)
         self._on_finish("done")
@@ -182,7 +266,7 @@ class Job(ExecutorObj):
         assert self.engine is not None
         if self.engine.print_traceback:
             logger.exception(e)
-        self._exception = e
+        self.future.set_exception(e)
         if self.error_callback is not None:
             self.error_callback(e)
         self._on_finish("failed")
@@ -200,23 +284,20 @@ class Job(ExecutorObj):
             except Exception as e:  # pragma: no cover
                 print(str(e))
             finally:
-                self._on_finish("canceled")
+                self._on_finish("cancelled")
         elif self.status == "pending":
-            self.status = "canceled"
+            self.status = "cancelled"
 
     def clear_context(self):
         pass
 
     def result(self) -> T.Any:
-        if self.task is not None:
-            if self.status != "done":
-                raise InvalidStateError(f"{self} is not done.")
-            return self.task.result()
-        else:
-            raise InvalidStateError(f"{self} is not emitted.")
+        if self.status != "done":
+            raise InvalidStateError(f"{self} is not done.")
+        return self.future.result()
 
     def exception(self):
-        return self._exception
+        return self.future.exception()
 
     def serialization(self) -> bytes:
         job = copy(self)

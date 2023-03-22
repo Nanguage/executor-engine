@@ -5,7 +5,20 @@ import psutil
 import socket
 
 
-from .error import RangeCheckError, TypeCheckError
+class ExecutorError(Exception):
+    pass
+
+
+class CheckError(ExecutorError):
+    pass
+
+
+class TypeCheckError(CheckError):
+    pass
+
+
+class RangeCheckError(CheckError):
+    pass
 
 
 class CheckAttrRange(object):

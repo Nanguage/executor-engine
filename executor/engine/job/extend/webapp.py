@@ -8,8 +8,7 @@ from cmd2func.runner import ProcessRunner
 
 from ..process import ProcessJob
 from ..condition import Condition
-from ...utils import PortManager
-from ...error import ExecutorError
+from ...utils import PortManager, ExecutorError
 
 
 LauncherFunc = T.Callable[[str, int], None]

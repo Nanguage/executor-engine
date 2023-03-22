@@ -4,10 +4,10 @@ from pathlib import Path
 import asyncio
 from threading import Thread
 import time
-from concurrent.futures import Future, wait
+import concurrent.futures
 
 from .base import ExecutorObj
-from .job.base import Job
+from .job.base import Job, JobFuture
 from .manager import Jobs
 from .log import logger
 
@@ -123,21 +123,12 @@ class Engine(ExecutorObj):
         self.cache_dir = self.get_cache_dir()
         self.print_traceback = setting.print_traceback
 
-    def submit(self, job: Job) -> Future:
+    def submit(self, job: Job) -> JobFuture:
         """Submit job to engine and return a future object."""
         fut = asyncio.run_coroutine_threadsafe(
             self.submit_async(job), self.loop)
         fut.result()
-
-        async def wait_run():
-            await job.join()
-            if job.status == "done":
-                return job.result()
-            else:
-                return job.exception()
-        fut = asyncio.run_coroutine_threadsafe(
-            wait_run(), self.loop)
-        return fut
+        return job.future
 
     async def submit_async(self, job: Job):
         """Asynchronous interface for submit job to engine."""
@@ -173,15 +164,25 @@ class Engine(ExecutorObj):
             fut = asyncio.run_coroutine_threadsafe(
                 job.cancel(), self.loop)
             futures.append(fut)
-        wait(futures)
+        concurrent.futures.wait(futures)
 
     def wait_job(
-            self, job: Job,
-            timeout: T.Optional[float] = None):
-        """Block until job is finished or timeout."""
+            self, job: T.Union[Job, JobFuture],
+            timeout: T.Optional[float] = None,
+            ) -> T.Optional[T.Any]:
+        """Block until job is finished or timeout.
+        Return job result if job is done."""
+        if isinstance(job, JobFuture):
+            job_ = self.jobs.get_job_by_id(job.job_id)
+        else:
+            job_ = job
         fut = asyncio.run_coroutine_threadsafe(
-            job.join(timeout=timeout), self.loop)
+            job_.join(timeout=timeout), self.loop)
         fut.result()
+        if job_.status == "done":
+            return job_.result()
+        else:
+            return None
 
     def wait(
             self,

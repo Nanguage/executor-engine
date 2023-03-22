@@ -53,7 +53,7 @@ def test_cancel_job():
         await engine.submit_async(job)
         await asyncio.sleep(1)
         await job.cancel()
-        assert job.status == "canceled"
+        assert job.status == "cancelled"
         await engine.dask_client.close()
 
     asyncio.run(main())

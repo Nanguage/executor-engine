@@ -9,7 +9,6 @@ from concurrent.futures import Future, wait
 from .base import ExecutorObj
 from .job.base import Job
 from .manager import Jobs
-from .utils import get_event_loop
 from .log import logger
 
 if T.TYPE_CHECKING:
@@ -63,9 +62,8 @@ class Engine(ExecutorObj):
     @property
     def loop(self):
         if self._loop is None:
-            loop, is_new = get_event_loop()
-            if is_new:
-                logger.info(f"{self} created new event loop.")
+            loop = asyncio.new_event_loop()
+            logger.info(f"{self} created new event loop.")
             self._loop = loop
         return self._loop
 

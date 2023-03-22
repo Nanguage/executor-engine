@@ -119,6 +119,7 @@ async def main():
     print(job2.result())  # 7
 
 asyncio.run(main())
+# or just `await main()` in jupyter environment
 
 ```
 
@@ -204,7 +205,7 @@ with Engine() as engine:
 After a time point:
 
 ```python
-rom executor.engine import Engine, ProcessJob
+from executor.engine import Engine, ProcessJob
 from executor.engine.job.condition import AfterTimepoint
 from datetime import datetime, timedelta
 
@@ -323,6 +324,7 @@ with Engine() as engine:
 - [x] Dask job.
 - [x] Change engine's API to sync mode.
 - [x] Logging system.
+- [x] Support run in jupyter notebook.
 - [ ] Job dependency(rely on other job's result).
 - [ ] Allow cache result on disk.
 - [ ] Documentation.

@@ -1,11 +1,11 @@
 import time
 import asyncio
 
-from executor.engine.task import task
+from executor.engine.launcher import launcher
 
 
 def test_task_and_fut():
-    @task(job_type='process')
+    @launcher(job_type='process')
     def add(a, b):
         time.sleep(1)
         return a + b
@@ -28,7 +28,7 @@ def test_task_and_fut():
 
 
 def test_sync_chain():
-    @task
+    @launcher
     def add(a, b):
         return a + b
 
@@ -40,16 +40,16 @@ def test_sync_chain():
     assert fut2.result() == 6
 
 
-def test_sync_task_call():
-    @task
+def test_sync_launcher_call():
+    @launcher
     def add(a, b):
         return a + b
 
     assert add(1, 2) == 3
 
 
-def test_async_task_run():
-    @task(async_mode=True)
+def test_async_launcher_run():
+    @launcher(async_mode=True)
     def add(a, b):
         time.sleep(0.5)
         return a + b
@@ -68,7 +68,7 @@ def test_async_task_run():
 
 
 def test_sync_async_convert():
-    @task(async_mode=True)
+    @launcher(async_mode=True)
     def add(a, b):
         time.sleep(0.5)
         return a + b

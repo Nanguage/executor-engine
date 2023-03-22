@@ -34,7 +34,7 @@ def get_engine() -> Engine:
     return _engine
 
 
-class TaskBase(object):
+class LauncherBase(object):
     def __init__(
             self, target_func: T.Callable,
             engine: 'Engine',
@@ -69,7 +69,7 @@ class TaskBase(object):
         return job.result()
 
 
-class SyncTask(TaskBase):
+class SyncLauncher(LauncherBase):
 
     pool = ThreadPoolExecutor()
 
@@ -110,14 +110,14 @@ class SyncTask(TaskBase):
         fut = self.submit(*args, **kwargs)
         return fut.result()
 
-    def to_async(self) -> "AsyncTask":
-        return AsyncTask(
+    def to_async(self) -> "AsyncLauncher":
+        return AsyncLauncher(
             self.target_func, self.engine, self.job_type,
             self.name, self.description, self.tags, **self.job_attrs,
         )
 
 
-class AsyncTask(TaskBase):
+class AsyncLauncher(LauncherBase):
     @property
     def async_mode(self):
         return True
@@ -131,14 +131,14 @@ class AsyncTask(TaskBase):
         job = self.create_job(args, kwargs)
         return await self.submit_and_wait(job)
 
-    def to_sync(self) -> "SyncTask":
-        return SyncTask(
+    def to_sync(self) -> "SyncLauncher":
+        return SyncLauncher(
             self.target_func, self.engine, self.job_type,
             self.name, self.description, self.tags, **self.job_attrs,
         )
 
 
-def task(
+def launcher(
         func=None,
         engine: T.Optional['Engine'] = None,
         async_mode: bool = False,
@@ -149,20 +149,20 @@ def task(
         **job_attrs):
     if func is None:
         return functools.partial(
-            task, engine=engine, async_mode=async_mode,
+            launcher, engine=engine, async_mode=async_mode,
             job_type=job_type,
             name=name, tags=tags,
         )
     if engine is None:
         engine = get_engine()
 
-    task_cls: T.Union[T.Type[AsyncTask], T.Type[SyncTask]]
+    launcher_cls: T.Union[T.Type[AsyncLauncher], T.Type[SyncLauncher]]
     if async_mode:
-        task_cls = AsyncTask
+        launcher_cls = AsyncLauncher
     else:
-        task_cls = SyncTask
+        launcher_cls = SyncLauncher
 
-    return task_cls(
+    return launcher_cls(
         func, engine, job_type,
         name, description, tags, **job_attrs,
     )

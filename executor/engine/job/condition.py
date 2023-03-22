@@ -1,7 +1,6 @@
 import typing as T
 from datetime import datetime
-
-from pydantic import BaseModel
+from dataclasses import dataclass
 
 from .utils import JobStatusType
 
@@ -9,11 +8,13 @@ if T.TYPE_CHECKING:
     from ..core import Engine
 
 
-class Condition(BaseModel):
+@dataclass
+class Condition():
     def satisfy(self, engine: "Engine") -> bool:  # pragma: no cover
         return True
 
 
+@dataclass
 class AfterAnother(Condition):
     job_id: str
     status: JobStatusType = "done"
@@ -30,6 +31,7 @@ class AfterAnother(Condition):
                 return False
 
 
+@dataclass
 class AfterOthers(Condition):
     job_ids: T.List[str]
     status: JobStatusType = "done"
@@ -49,6 +51,7 @@ class AfterOthers(Condition):
             return any(other_job_satisfy)
 
 
+@dataclass
 class AfterTimepoint(Condition):
     timepoint: datetime
 
@@ -59,15 +62,18 @@ class AfterTimepoint(Condition):
             return False
 
 
+@dataclass
 class Combination(Condition):
     conditions: T.List[Condition]
 
 
+@dataclass
 class AllSatisfied(Combination):
     def satisfy(self, engine):
         return all([c.satisfy(engine) for c in self.conditions])
 
 
+@dataclass
 class AnySatisfied(Combination):
     def satisfy(self, engine):
         return any([c.satisfy(engine) for c in self.conditions])

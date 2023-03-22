@@ -44,7 +44,6 @@ def get_install_requires():
         "loky",
         "diskcache",
         "cloudpickle",
-        "pydantic",
         "psutil",
         "loguru",
     ]

@@ -24,7 +24,7 @@
 
 ## Introduction
 
-Executor Engine is a powerful and versatile package designed for managing and streamlining job execution across various platforms. With support for multiple job types, including `LocalJob`, `ThreadJob`, `ProcessJob`, `DaskJob`, and more, Executor Engine provides flexibility and adaptability for a wide range of tasks. The package also offers extensible job types, such as SubprocessJob and WebappJob, ensuring that your workflow can be easily customized to meet specific requirements.
+Executor Engine is a powerful and versatile package designed for managing and streamlining job execution across various platforms. With support for multiple job types, including `LocalJob`, `ThreadJob`, `ProcessJob`, `DaskJob`, and more, Executor Engine provides flexibility and adaptability for a wide range of tasks. The package also offers extensible job types, such as `SubprocessJob` and `WebappJob`, ensuring that your workflow can be easily customized to meet specific requirements.
 
 By harnessing the capabilities of Executor Engine, users can effortlessly construct parallel workflows to optimize their processing pipeline. The engine facilitates conditional job execution, allowing for the configuration of conditions such as `AfterAnother`, `AfterTimepoint`, and more. This level of customization simplifies the creation of complex, parallel workflows and maximizes efficiency.
 
@@ -32,24 +32,22 @@ By harnessing the capabilities of Executor Engine, users can effortlessly constr
 ### Features
 
 + Support multiple job types:
-  * LocalJob, ThreadJob, ProcessJob, DaskJob
-  * Extend job types:
-    - SubprocessJob
-    - WebappJob
+  * `LocalJob`, `ThreadJob`, `ProcessJob`, `DaskJob`
+  * Extend job types: `SubprocessJob`, `WebappJob`
 + Job management.
-  * Job status: Pending, Running, Success, Failed, Cancelled.
+  * Job status: Pending, Running, Done, Failed, Cancelled.
   * Limit the number of concurrent jobs.
   * Status management: Cancel, Re-run, ...
   * Auto retry on failure.
   * Serilization and deserialization.
 + Support conditional job execution.
-  * After another job.
-  * After a time point.
-  * Condition combination.
-    - All conditions are met.
-    - Any condition is met.
+  * `AfterAnother`, `AfterOthers`: After another job or jobs done/failed/canceled.
+  * `AfterTimepoint`: After a time point.
+  * Condition combination:
+    - `AllSatisfied`: All conditions are met.
+    - `AnySatisfied`: Any condition is met.
   * Allow user to define custom condition.
-+ The task API for create workflow in an easy way.
++ The launcher API for create parallel workflow in an easy way.
 + Provide async and sync API, fully compatible with asyncio.
 + 100% test coverage.
 
@@ -291,11 +289,17 @@ You can also define your own condition by inheriting `Condition` class:
 from executor.engine import Engine, ThreadJob
 from executor.engine.job.condition import Condition
 import random
+from dataclasses import dataclass
 
 
+@dataclass
 class RandomCondition(Condition):
+    probability: float = 0.5
+
     def satisfy(self, engine: "Engine") -> bool:
-        if random.random() <= 0.5:
+        p = random.random()
+        print(f"p={p}")
+        if p <= self.probability:
             return True
         else:
             return False
@@ -304,9 +308,9 @@ class RandomCondition(Condition):
 with Engine() as engine:
     job = ThreadJob(
         lambda: print("hi"),
-        condition=RandomCondition(),
+        condition=RandomCondition(0.2),
         wait_time_delta=0.5)
-    # job has a 50% chance to be executed at each 0.5 seconds
+    # job has a 20% chance to be executed at each 0.5 seconds
     engine.submit(job)
     engine.wait()
 ```
@@ -314,11 +318,13 @@ with Engine() as engine:
 
 ## TODO List
 
-- [x] Task design.
+- [x] Launcher API.
 - [x] Job retry.
 - [x] Dask job.
 - [x] Change engine's API to sync mode.
 - [x] Logging system.
+- [ ] Job dependency(rely on other job's result).
+- [ ] Allow cache result on disk.
 - [ ] Documentation.
 
 

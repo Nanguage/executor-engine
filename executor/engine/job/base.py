@@ -43,6 +43,8 @@ class JobFuture():
         self.job_id = job_id
         self._result: T.Optional[T.Any] = None
         self._exception: T.Optional[Exception] = None
+        self.done_callbacks: T.List[T.Callable] = []
+        self.error_callbacks: T.List[T.Callable] = []
 
     def result(self) -> T.Any:
         return self._result
@@ -55,6 +57,12 @@ class JobFuture():
 
     def set_exception(self, exception: Exception) -> None:
         self._exception = exception
+
+    def add_done_callback(self, callback: T.Callable) -> None:
+        self.done_callbacks.append(callback)
+
+    def add_error_callback(self, callback: T.Callable) -> None:
+        self.error_callbacks.append(callback)
 
 
 class Job(ExecutorObj):
@@ -78,13 +86,16 @@ class Job(ExecutorObj):
             **attrs
             ) -> None:
         super().__init__()
+        self.future = JobFuture(self.id)
         self.func = func
         self.args = args or tuple()
         self.kwargs = kwargs or {}
-        self.callback = callback
-        self.error_callback = error_callback
+        if callback is not None:
+            self.future.add_done_callback(callback)
+        if error_callback is not None:
+            self.future.add_error_callback(error_callback)
         self.retries = retries
-        self.retry_count = 0
+        self.retry_remain = retries
         self.retry_time_delta = retry_time_delta
         self.engine: T.Optional["Engine"] = None
         self._status: str = "created"
@@ -100,7 +111,6 @@ class Job(ExecutorObj):
         self.stoped_time: T.Optional[datetime] = None
         self._executor: T.Any = None
         self.dep_job_ids: T.List[str] = []
-        self.future = JobFuture(self.id)
 
     def __repr__(self) -> str:
         func_name = get_callable_name(self.func)
@@ -111,6 +121,8 @@ class Job(ExecutorObj):
         ]
         if self.condition:
             attrs.append(f" condition={repr(self.condition)}")
+        if self.retry_remain > 0:
+            attrs.append(f" retry_remain={self.retry_remain}")
         attr_str = " ".join(attrs)
         return f"<{self.__class__.__name__} {attr_str}>"
 
@@ -251,9 +263,9 @@ class Job(ExecutorObj):
     async def run(self):
         pass
 
-    async def rerun(self):
+    async def rerun(self, check_status: bool = True):
         _valid_status = ("cancelled", "done", "failed")
-        if self.status not in _valid_status:
+        if check_status and (self.status not in _valid_status):
             raise JobEmitError(
                 f"{self} is not in valid status({_valid_status})")
         logger.info(f"Rerun job {self}")
@@ -267,8 +279,8 @@ class Job(ExecutorObj):
     async def on_done(self, res):
         logger.info(f"Job {self} done.")
         self.future.set_result(res)
-        if self.callback is not None:
-            self.callback(res)
+        for callback in self.future.done_callbacks:
+            callback(res)
         self._on_finish("done")
 
     async def on_failed(self, e: Exception):
@@ -277,13 +289,15 @@ class Job(ExecutorObj):
         if self.engine.print_traceback:
             logger.exception(e)
         self.future.set_exception(e)
-        if self.error_callback is not None:
-            self.error_callback(e)
-        self._on_finish("failed")
-        if self.retry_count < self.retries:
-            self.retry_count += 1
+        for err_callback in self.future.error_callbacks:
+            err_callback(e)
+        if self.retry_remain > 0:
+            self._on_finish("pending")
+            self.retry_remain -= 1
             await asyncio.sleep(self.retry_time_delta)
-            await self.rerun()
+            await self.rerun(check_status=False)
+        else:
+            self._on_finish("failed")
 
     async def cancel(self):
         logger.info(f"Cancel job {self}.")

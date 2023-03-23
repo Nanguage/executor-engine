@@ -13,6 +13,7 @@ test_job_cls = [LocalJob, ThreadJob, ProcessJob]
 
 def test_submit_job():
     n_run = 0
+
     def callback(res):
         nonlocal n_run
         n_run += 1
@@ -29,17 +30,18 @@ def test_submit_job():
 
 
 def test_err_callback():
-
     def raise_err():
         raise ValueError("test")
-    
+
     n_run = 0
+
     def err_callback(e):
         nonlocal n_run
         n_run += 1
         print(e)
 
-    with Engine() as engine:
+    setting = EngineSetting(print_traceback=False)
+    with Engine(setting) as engine:
         for job_cls in test_job_cls:
             job = job_cls(
                 raise_err,
@@ -201,7 +203,10 @@ def test_repr_job():
         str(job2)
         repr(job2)
         job3 = job_cls(print_hello, condition=AnySatisfied(
-            conditions=[AfterAnother(job_id=job1.id), AfterAnother(job_id=job2.id)]))
+            conditions=[
+                AfterAnother(job_id=job1.id),
+                AfterAnother(job_id=job2.id)
+            ]))
         str(job3)
         repr(job3)
 

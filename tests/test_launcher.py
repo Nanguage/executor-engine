@@ -1,10 +1,13 @@
 import time
 import asyncio
 
+import pytest
+
 from executor.engine.launcher import launcher
+from executor.engine import Engine
 
 
-def test_task_and_fut():
+def test_sync_launcher():
     @launcher(job_type='process')
     def add(a, b):
         time.sleep(1)
@@ -12,20 +15,29 @@ def test_task_and_fut():
 
     assert add.async_mode is False
 
-    fut = add.submit(1, 2)
-    assert fut.done() is False
-    assert fut.running() is True
-    assert fut.result() == 3
+    with Engine() as engine:
+        job = add.submit(1, 2)
+        assert job.status == 'running'
+        engine.wait_job(job)
+        assert job.result() == 3
 
-    fut = add.submit(1, 1)
-    var = 1
 
-    def set_var(fut):
-        nonlocal var
-        var = fut.result()
-    fut.add_done_callback(lambda x: set_var(x))
-    fut.result()
-    assert var == 2
+def test_sync_launcher_with_callback():
+    @launcher
+    def add(a, b):
+        return a + b
+
+    with Engine() as engine:
+        var = 1
+
+        def set_var(res):
+            nonlocal var
+            var = res
+
+        job = add.submit(1, 2)
+        job.future.add_done_callback(lambda x: set_var(x))
+        engine.wait_job(job)
+        assert var == 3
 
 
 def test_sync_chain():
@@ -33,12 +45,11 @@ def test_sync_chain():
     def add(a, b):
         return a + b
 
-    fut = add.submit(1, 2)
-    fut2 = add.submit(fut, 2)
-    assert fut2.result() == 5
-    fut1 = add.submit(1, 2)
-    fut2 = add.submit(a=fut1, b=fut1)
-    assert fut2.result() == 6
+    with Engine() as engine:
+        job = add.submit(1, 2)
+        job2 = add.submit(job.future, 2)
+        engine.wait_job(job2)
+        assert job2.result() == 5
 
 
 def test_sync_launcher_call():
@@ -46,7 +57,18 @@ def test_sync_launcher_call():
     def add(a, b):
         return a + b
 
-    assert add(1, 2) == 3
+    @launcher
+    def raise_exception():
+        raise ValueError("test")
+
+    with Engine():
+        assert add(1, 2) == 3
+        with pytest.raises(ValueError):
+            raise_exception()
+        with pytest.raises(RuntimeError):
+            job1 = raise_exception.submit()
+            job2 = add.submit(job1.future, 2)
+            add(job2.future, 2)
 
 
 def test_async_launcher_run():
@@ -58,12 +80,13 @@ def test_async_launcher_run():
     assert add.async_mode is True
 
     async def main():
-        a = await add(1, 2)
-        b = await add(a, 2)
-        assert b == 5
         job = await add.submit(1, 2)
         await job.join()
         assert job.result() == 3
+        a = await add(1, 2)
+        assert a == 3
+        b = await add(a, 2)
+        assert b == 5
 
     asyncio.run(main())
 

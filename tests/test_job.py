@@ -3,7 +3,7 @@ import time
 
 import pytest
 
-from executor.engine.core import Engine
+from executor.engine.core import Engine, EngineSetting
 from executor.engine.job import LocalJob, ThreadJob, ProcessJob
 from executor.engine.job.base import get_callable_name
 from executor.engine.job.base import JobEmitError, InvalidStateError
@@ -72,12 +72,13 @@ def test_job_retry():
     job = ProcessJob(
         raise_exception, retries=2,
         retry_time_delta=1)
-    assert job.retry_count == 0
-    engine = Engine()
+    assert job.retry_remain == 2
+    setting = EngineSetting(print_traceback=False)
+    engine = Engine(setting=setting)
     with engine:
         engine.submit(job)
         time.sleep(5)
-    assert job.retry_count == 2
+    assert job.retry_remain == 0
 
 
 def test_get_callable_name():

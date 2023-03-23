@@ -79,7 +79,10 @@ class Engine(ExecutorObj):
             loop.run_forever()
 
         if self._loop_thread is None:
-            self._loop_thread = Thread(target=run_in_thread, args=(self.loop,))
+            self._loop_thread = Thread(
+                target=run_in_thread,
+                args=(self.loop,), daemon=True
+            )
 
         if not self._loop_thread.is_alive():
             logger.info(f"{self} start event loop thread.")
@@ -106,10 +109,14 @@ class Engine(ExecutorObj):
 
     def __enter__(self):
         self.start()
+        from . launcher.core import set_default_engine
+        set_default_engine(self)
         return self
 
     def __exit__(self, *args):
         self.stop()
+        from . launcher.core import set_default_engine
+        set_default_engine(None)
 
     def setup_by_setting(self):
         setting = self.setting

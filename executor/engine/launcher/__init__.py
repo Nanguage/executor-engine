@@ -1,6 +1,10 @@
-from .core import launcher
+from .core import (
+    launcher, SyncLauncher,
+    AsyncLauncher, LauncherBase
+)
 
 
 __all__ = [
-    'launcher'
+    'launcher', 'SyncLauncher',
+    'AsyncLauncher', 'LauncherBase',
 ]

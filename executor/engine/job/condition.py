@@ -20,8 +20,10 @@ class AfterAnother(Condition):
     statuses: T.Iterable[JobStatusType] = ("done", "failed", "cancelled")
 
     def satisfy(self, engine):
-        another = engine.jobs.get_job_by_id(
-            self.job_id)
+        try:
+            another = engine.jobs.get_job_by_id(self.job_id)
+        except Exception:
+            return False
         if another.status in self.statuses:
             return True
         else:
@@ -37,7 +39,11 @@ class AfterOthers(Condition):
     def satisfy(self, engine):
         other_job_satisfy = []
         for id_ in self.job_ids:
-            job = engine.jobs.get_job_by_id(id_)
+            try:
+                job = engine.jobs.get_job_by_id(id_)
+            except Exception:
+                other_job_satisfy.append(False)
+                continue
             s_ = job.status in self.statuses
             other_job_satisfy.append(s_)
         if self.mode == 'all':

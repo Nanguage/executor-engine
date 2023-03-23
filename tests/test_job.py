@@ -120,7 +120,7 @@ def test_dependency_2():
         job1 = ProcessJob(add, (1, 2))
         job2 = ProcessJob(add, (job1.future, 3))
         job3 = ProcessJob(
-            add, (job2.future, 4),
+            add, kwargs={"a": job2.future, "b": 4},
             condition=AfterAnother(job_id=job1.id)
         )
         engine.submit(job3)
@@ -129,3 +129,36 @@ def test_dependency_2():
         assert isinstance(job3.condition, AllSatisfied)
         engine.wait_job(job3)
         assert job3.result() == 10
+
+
+def test_upstream_failed():
+    def add(a, b):
+        return a + b
+
+    def raise_exception():
+        raise ValueError("error")
+
+    with Engine() as engine:
+        job1 = ProcessJob(raise_exception)
+        job2 = ProcessJob(add, (1, job1.future))
+        engine.submit(job2)
+        engine.submit(job1)
+        engine.wait()
+        assert job1.status == "failed"
+        assert job2.status == "cancelled"
+
+
+def test_upstream_cancel():
+    def add(a, b):
+        time.sleep(3)
+        return a + b
+
+    with Engine() as engine:
+        job1 = ProcessJob(add, (1, 2))
+        job2 = ProcessJob(add, (1, job1.future))
+        engine.submit(job2)
+        engine.submit(job1)
+        engine.cancel(job1)
+        engine.wait()
+        assert job1.status == "cancelled"
+        assert job2.status == "cancelled"

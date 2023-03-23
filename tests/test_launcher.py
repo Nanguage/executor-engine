@@ -19,6 +19,7 @@ def test_task_and_fut():
 
     fut = add.submit(1, 1)
     var = 1
+
     def set_var(fut):
         nonlocal var
         var = fut.result()

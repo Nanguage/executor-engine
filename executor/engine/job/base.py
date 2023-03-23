@@ -34,6 +34,10 @@ def get_callable_name(callable) -> str:
         return str(callable)
 
 
+class StopResolve(Exception):
+    pass
+
+
 class JobFuture():
     def __init__(self, job_id: str) -> None:
         self.job_id = job_id
@@ -51,7 +55,6 @@ class JobFuture():
 
     def set_exception(self, exception: Exception) -> None:
         self._exception = exception
-
 
 
 class Job(ExecutorObj):
@@ -156,14 +159,18 @@ class Job(ExecutorObj):
             job = self.engine.jobs.get_job_by_id(arg.job_id)
             if job.status == "done":
                 return job.result()
-            elif job.status == "error":
-                msg = f"Job {self} cancelled because of upstream job {job} failed."
+            elif job.status == "failed":
+                msg = f"Job {self} cancelled because " \
+                      f"of upstream job {job} failed."
                 logger.warning(msg)
                 await self.cancel()
+                raise StopResolve(msg)
             elif job.status == "cancelled":
-                msg = f"Job {self} cancelled because of upstream job {job} cancelled."
+                msg = f"Job {self} cancelled because " \
+                      f"of upstream job {job} cancelled."
                 logger.warning(msg)
                 await self.cancel()
+                raise StopResolve(msg)
             else:  # pragma: no cover
                 raise ExecutorError("Unreachable code.")
         else:
@@ -179,7 +186,7 @@ class Job(ExecutorObj):
                 args.append(resolved)
             for key, value in self.kwargs.items():
                 resolved = await self._resolve_arg(value)
-                kwargs[key] = self._resolve_arg(resolved)
+                kwargs[key] = resolved
             self.args = tuple(args)
             self.kwargs = kwargs
 
@@ -226,7 +233,10 @@ class Job(ExecutorObj):
             if self.runnable() and self.consume_resource():
                 logger.info(f"Start run job {self}")
                 self.process_func()
-                await self.resolve_args()
+                try:
+                    await self.resolve_args()
+                except StopResolve:
+                    break
                 self.status = "running"
                 try:
                     res = await self.run()

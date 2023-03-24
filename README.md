@@ -52,7 +52,7 @@ By harnessing the capabilities of Executor Engine, users can effortlessly constr
 + 🎯 100% test coverage.
 
 
-See [docs](https://executor-engine.readthedocs.io/en/latest/) for more details.
+See our [documentation](https://executor-engine.readthedocs.io/en/latest/) for more details.
 
 
 ## 📦 Installation

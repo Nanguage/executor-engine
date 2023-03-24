@@ -12,7 +12,7 @@ With dask support:
 pip install "executor-engine[dask]"
 ```
 
-## 🚀 Basic usage
+## 📚 Basic usage
 
 `Engine` is the core object of executor-engine. It manages the job execution.
 You can create an `Engine` object and submit jobs to it, then wait for the jobs to finish:
@@ -282,4 +282,23 @@ with Engine() as engine:
     # job has a 20% chance to be executed at each 0.5 seconds
     engine.submit(job)
     engine.wait()
+```
+
+## 🚀 Launcher API
+
+`executor.engine` provides a launcher API for launching jobs in more efficient way.
+
+```python
+from executor.engine.launcher import launcher
+from executor.engine import Engine
+
+@launcher(job_type='process')
+def add(a, b):
+    time.sleep(1)
+    return a + b
+
+with Engine() as engine:
+    job = add.submit(1, 2)
+    engine.wait_job(job)
+    print(job.result()) # 3
 ```

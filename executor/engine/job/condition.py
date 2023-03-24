@@ -10,16 +10,23 @@ if T.TYPE_CHECKING:
 
 @dataclass
 class Condition():
+    """Base class for condition"""
+
     def satisfy(self, engine: "Engine") -> bool:  # pragma: no cover
+        """Check if the condition is satisfied."""
         return True
 
 
 @dataclass
 class AfterAnother(Condition):
+    """Condition that the job is executed after
+    another job is done/failed/cancelled."""
+
     job_id: str
     statuses: T.Iterable[JobStatusType] = ("done", "failed", "cancelled")
 
     def satisfy(self, engine):
+        """Check if the condition is satisfied."""
         try:
             another = engine.jobs.get_job_by_id(self.job_id)
         except Exception:
@@ -32,11 +39,15 @@ class AfterAnother(Condition):
 
 @dataclass
 class AfterOthers(Condition):
+    """Condition that the job is executed after
+    other jobs are done/failed/cancelled."""
+
     job_ids: T.List[str]
     statuses: T.Iterable[JobStatusType] = ("done", "failed", "cancelled")
     mode: T.Literal['all', 'any'] = "all"
 
     def satisfy(self, engine):
+        """Check if the condition is satisfied."""
         other_job_satisfy = []
         for id_ in self.job_ids:
             try:
@@ -54,9 +65,12 @@ class AfterOthers(Condition):
 
 @dataclass
 class AfterTimepoint(Condition):
+    """Condition that the job is executed after a timepoint."""
+
     timepoint: datetime
 
     def satisfy(self, engine):
+        """Check if the condition is satisfied."""
         if datetime.now() > self.timepoint:
             return True
         else:
@@ -65,16 +79,25 @@ class AfterTimepoint(Condition):
 
 @dataclass
 class Combination(Condition):
+    """Base class for combination of conditions."""
     conditions: T.List[Condition]
 
 
 @dataclass
 class AllSatisfied(Combination):
+    """Condition that the job is executed after all
+    sub-conditions are satisfied."""
+
     def satisfy(self, engine):
+        """Check if the condition is satisfied."""
         return all([c.satisfy(engine) for c in self.conditions])
 
 
 @dataclass
 class AnySatisfied(Combination):
+    """Condition that the job is executed after any
+    sub-condition is satisfied."""
+
     def satisfy(self, engine):
+        """Check if the condition is satisfied."""
         return any([c.satisfy(engine) for c in self.conditions])

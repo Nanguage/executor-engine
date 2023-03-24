@@ -130,12 +130,14 @@ class Job(ExecutorObj):
         return repr(self)
 
     def has_resource(self) -> bool:
+        """Check if the job has resource to run."""
         if self.engine is None:
             return False
         else:
             return self.engine.resource.n_job > 0
 
     def consume_resource(self) -> bool:
+        """Consume the resource of the job."""
         if self.engine is None:
             return False
         else:
@@ -143,6 +145,7 @@ class Job(ExecutorObj):
             return True
 
     def release_resource(self) -> bool:
+        """Release the resource of the job."""
         if self.engine is None:
             return False
         else:
@@ -216,6 +219,7 @@ class Job(ExecutorObj):
             return self.has_resource()
 
     async def emit(self) -> asyncio.Task:
+        """Emit the job to the engine."""
         logger.info(f"Emit job {self}, watting for run.")
         if self.status != 'pending':
             raise JobEmitError(
@@ -241,6 +245,7 @@ class Job(ExecutorObj):
             self.func = ChDir(self.func, cache_dir)
 
     async def wait_and_run(self):
+        """Wait for the condition satisfied and run the job."""
         while True:
             if self.runnable() and self.consume_resource():
                 logger.info(f"Start run job {self}")
@@ -261,9 +266,11 @@ class Job(ExecutorObj):
                 await asyncio.sleep(self.wait_time_delta)
 
     async def run(self):
+        """Run the job."""
         pass
 
     async def rerun(self, check_status: bool = True):
+        """Rerun the job."""
         _valid_status = ("cancelled", "done", "failed")
         if check_status and (self.status not in _valid_status):
             raise JobEmitError(
@@ -277,6 +284,7 @@ class Job(ExecutorObj):
         self.release_resource()
 
     async def on_done(self, res):
+        """Callback when the job is done."""
         logger.info(f"Job {self} done.")
         self.future.set_result(res)
         for callback in self.future.done_callbacks:
@@ -284,6 +292,7 @@ class Job(ExecutorObj):
         self._on_finish("done")
 
     async def on_failed(self, e: Exception):
+        """Callback when the job is failed."""
         logger.error(f"Job {self} failed: {repr(e)}")
         assert self.engine is not None
         if self.engine.print_traceback:
@@ -300,6 +309,7 @@ class Job(ExecutorObj):
             self._on_finish("failed")
 
     async def cancel(self):
+        """Cancel the job."""
         logger.info(f"Cancel job {self}.")
         self.task.cancel()
         if self.status == "running":
@@ -313,17 +323,21 @@ class Job(ExecutorObj):
             self.status = "cancelled"
 
     def clear_context(self):
+        """Clear the context of the job."""
         pass
 
     def result(self) -> T.Any:
+        """Get the result of the job."""
         if self.status != "done":
             raise InvalidStateError(f"{self} is not done.")
         return self.future.result()
 
     def exception(self):
+        """Get the exception of the job."""
         return self.future.exception()
 
     def serialization(self) -> bytes:
+        """Serialize the job to bytes."""
         job = copy(self)
         job.task = None
         job.engine = None
@@ -333,16 +347,19 @@ class Job(ExecutorObj):
 
     @staticmethod
     def deserialization(bytes_: bytes) -> "Job":
+        """Deserialize the job from bytes."""
         job: "Job" = cloudpickle.loads(bytes_)
         return job
 
     async def join(self, timeout: T.Optional[float] = None):
+        """Wait for the job done."""
         if self.task is None:
             raise InvalidStateError(f"{self} is not emitted.")
         await asyncio.wait([self.task], timeout=timeout)
 
     @property
     def cache_dir(self) -> T.Optional[Path]:
+        """Get the cache dir of the job."""
         if self.engine is None:
             return None
         parent = self.engine.cache_dir

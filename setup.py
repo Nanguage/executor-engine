@@ -37,23 +37,30 @@ def get_long_description():
     return f"See {URL}"
 
 
-def get_install_requires():
-    requirements = [
-        "cmd2func>=0.1.3",
-        "funcdesc>=0.1.2",
-        "loky",
-        "diskcache",
-        "cloudpickle",
-        "psutil",
-        "loguru",
-    ]
+def get_requirements_from_file(filename):
+    requirements = []
+    with open(filename) as f:
+        for line in f.readlines():
+            line = line.strip()
+            if len(line) == 0:
+                continue
+            if line and not line.startswith('#'):
+                requirements.append(line)
     return requirements
+
+
+def get_install_requires():
+    return get_requirements_from_file('requirements.txt')
+
+
+def get_doc_requires():
+    return get_requirements_from_file('docs/requirements.txt')
 
 
 requires_test = ['pytest', 'pytest-cov', 'flake8', 'mypy']
 packages_for_dev = ["pip", "setuptools", "wheel", "twine", "ipdb"]
 
-requires_dev = packages_for_dev + requires_test
+requires_dev = packages_for_dev + requires_test + get_doc_requires()
 
 requires_dask = ['dask', 'distributed', 'nest_asyncio']
 

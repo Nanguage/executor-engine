@@ -7,7 +7,7 @@ import time
 import concurrent.futures
 
 from .base import ExecutorObj
-from .job.base import Job, JobFuture
+from .job.base import Job
 from .manager import Jobs
 from .log import logger
 
@@ -175,20 +175,16 @@ class Engine(ExecutorObj):
         concurrent.futures.wait(futures)
 
     def wait_job(
-            self, job: T.Union[Job, JobFuture],
+            self, job: Job,
             timeout: T.Optional[float] = None,
             ) -> T.Optional[T.Any]:
         """Block until job is finished or timeout.
         Return job result if job is done."""
-        if isinstance(job, JobFuture):
-            job_ = self.jobs.get_job_by_id(job.job_id)
-        else:
-            job_ = job
         fut = asyncio.run_coroutine_threadsafe(
-            job_.join(timeout=timeout), self.loop)
+            job.join(timeout=timeout), self.loop)
         fut.result()
-        if job_.status == "done":
-            return job_.result()
+        if job.status == "done":
+            return job.result()
         else:
             return None
 

@@ -19,7 +19,10 @@ def get_default_client() -> Client:
 
 
 class DaskJob(Job):
+    """Job that runs with Dask."""
+
     def has_resource(self) -> bool:
+        """Check if the job has enough resource to run."""
         if self.engine is None:
             return False
         else:
@@ -29,6 +32,7 @@ class DaskJob(Job):
             )
 
     def consume_resource(self) -> bool:
+        """Consume resource for the job."""
         if self.engine is None:
             return False
         else:
@@ -39,6 +43,7 @@ class DaskJob(Job):
             )
 
     def release_resource(self) -> bool:
+        """Release resource for the job."""
         if self.engine is None:
             return False
         else:
@@ -49,6 +54,7 @@ class DaskJob(Job):
             )
 
     async def run(self):
+        """Run job with Dask."""
         client = self.engine.dask_client
         func = functools.partial(self.func, **self.kwargs)
         fut = client.submit(func, *self.args)
@@ -57,9 +63,11 @@ class DaskJob(Job):
         return result
 
     async def cancel(self):
+        """Cancel job."""""
         if self.status == "running":
             await self._executor.cancel()
         await super().cancel()
 
     def clear_context(self):
+        """Clear context."""
         self._executor = None

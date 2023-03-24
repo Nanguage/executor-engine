@@ -130,22 +130,23 @@ class Engine(ExecutorObj):
         self.cache_dir = self.get_cache_dir()
         self.print_traceback = setting.print_traceback
 
-    def submit(self, job: Job) -> JobFuture:
-        """Submit job to engine and return a future object."""
+    def submit(self, *jobs: Job):
+        """Submit job to engine"""
         fut = asyncio.run_coroutine_threadsafe(
-            self.submit_async(job), self.loop)
+            self.submit_async(*jobs), self.loop)
         fut.result()
-        return job.future
 
-    async def submit_async(self, job: Job):
-        """Asynchronous interface for submit job to engine."""
-        if job.status == "created":
-            job.engine = self
-            job._status = "pending"
-            self.jobs.add(job)
-        else:
-            job.status = "pending"
-        await job.emit()
+    async def submit_async(self, *jobs: Job):
+        """Asynchronous interface for submit jobs to engine."""
+        for job in jobs:
+            if job.status == "created":
+                job.engine = self
+                job._status = "pending"
+                self.jobs.add(job)
+            else:
+                job.status = "pending"
+            assert job.engine is self, "Job engine is not this engine."
+            await job.emit()
 
     def remove(self, job: Job):
         """Remove job from engine."""

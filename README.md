@@ -1,7 +1,7 @@
 <div align="center">
-<h1> Executor engine </h1>
+<h1> Executor Engine 🚀 </h1>
 
-<p> Package for job execution management. </p>
+<p> Effortless, flexible, and powerful job execution engine. </p>
 
 <p>
   <a href="https://github.com/Nanguage/executor-engine/actions/workflows/build_and_test.yml">
@@ -24,37 +24,44 @@
 
 ## Introduction
 
-Executor Engine is a powerful and versatile package designed for managing and streamlining job execution across various platforms. With support for multiple job types, including `LocalJob`, `ThreadJob`, `ProcessJob`, `DaskJob`, and more, Executor Engine provides flexibility and adaptability for a wide range of tasks. The package also offers extensible job types, such as `SubprocessJob` and `WebappJob`, ensuring that your workflow can be easily customized to meet specific requirements.
+Executor Engine 🚀 is a powerful and versatile package designed for managing and streamlining job execution across various platforms. With support for multiple job types, including `LocalJob`, `ThreadJob`, `ProcessJob`, `DaskJob`, and more, Executor Engine provides flexibility and adaptability for a wide range of tasks. The package also offers extensible job types, such as `SubprocessJob` and `WebappJob`, ensuring that your workflow can be easily customized to meet specific requirements.
 
 By harnessing the capabilities of Executor Engine, users can effortlessly construct parallel workflows to optimize their processing pipeline. The engine facilitates conditional job execution, allowing for the configuration of conditions such as `AfterAnother`, `AfterTimepoint`, and more. This level of customization simplifies the creation of complex, parallel workflows and maximizes efficiency.
 
 
-### Features
+### Features ✨
 
-+ Support multiple job types:
++ Support multiple job types 📚
   * `LocalJob`, `ThreadJob`, `ProcessJob`, `DaskJob`
   * Extend job types: `SubprocessJob`, `WebappJob`
-+ Job management.
++ Job management 🔧
+  * Job dependency management.
   * Job status: Pending, Running, Done, Failed, Cancelled.
   * Limit the number of concurrent jobs.
   * Status management: Cancel, Re-run, ...
   * Auto retry on failure.
   * Serilization and deserialization.
-+ Support conditional job execution.
++ Conditional job execution. ⏱️
   * `AfterAnother`, `AfterOthers`: After another job or jobs done/failed/cancelled.
   * `AfterTimepoint`: After a time point.
   * Condition combination:
     - `AllSatisfied`: All conditions are met.
     - `AnySatisfied`: Any condition is met.
   * Allow user to define custom condition.
-+ The launcher API for create parallel workflow in an easy way.
-+ Provide async and sync API, fully compatible with asyncio.
-+ 100% test coverage.
++ The launcher API for create parallel workflow in an easy way. 🚀
++ Provide async and sync API, fully compatible with asyncio. ⚡
++ 100% test coverage. 🎯
 
 ## Install
 
 ```bash
 pip install executor-engine
+```
+
+With dask support:
+
+```bash
+pip install "executor-engine[dask]"
 ```
 
 ## Examples
@@ -70,9 +77,11 @@ engine.start()
 def add(a, b):
     return a + b
 
-job = ProcessJob(add, args=(1, 2))
-future = engine.submit(job)
-print(future.result())
+job1 = ProcessJob(add, args=(1, 2))
+job2 = ProcessJob(add, args=(job1.future, 4))  # job2 depends on job1
+engine.submit(job1, job2)
+engine.wait_job(job2)
+print(job2.result())  # 7
 
 engine.stop()
 ```
@@ -89,9 +98,7 @@ with Engine() as engine:
     job1 = LocalJob(add, args=(1, 2))
     job2 = ThreadJob(add, args=(3, 4))
     job3 = ProcessJob(add, args=(5, 6))
-    engine.submit(job1)
-    engine.submit(job2)
-    engine.submit(job3)
+    engine.submit(job1, job2, job3)
     engine.wait()  # wait all job finished
     print(job1.result())  # 3
     print(job2.result())  # 7
@@ -111,16 +118,14 @@ def add(a, b):
 
 async def main():
     job1 = ProcessJob(add, args=(1, 2))
-    job2 = ProcessJob(add, args=(3, 4))
-    await engine.submit_async(job1)
-    await engine.submit_async(job2)
+    job2 = ProcessJob(add, args=(job1.future, 4))
+    await engine.submit_async(job1, job2)
     await engine.join()
     print(job1.result())  # 3
     print(job2.result())  # 7
 
 asyncio.run(main())
 # or just `await main()` in jupyter environment
-
 ```
 
 ### Extend job types
@@ -196,9 +201,27 @@ def add(a, b):
 with Engine() as engine:
     job1 = ProcessJob(add, args=(1, 2))
     job2 = ProcessJob(add, args=(3, 4), condition=AfterAnother(job_id=job1.id))
-    engine.submit(job1)
-    engine.submit(job2)
+    engine.submit(job1, job2)
     # job2 will be executed after job1 finished
+    engine.wait()
+```
+
+After other jobs:
+
+```python
+from executor.engine import Engine, ProcessJob
+from executor.engine.job.condition import AfterOthers
+
+def add(a, b):
+    print(f"add({a}, {b})")
+    return a + b
+
+with Engine() as engine:
+    job1 = ProcessJob(add, args=(1, 2))
+    job2 = ProcessJob(add, args=(3, 4))
+    job3 = ProcessJob(add, args=(5, 6), condition=AfterOthers(job_ids=[job1.id, job2.id]))
+    engine.submit(job3, job2, job1)
+    # job3 will be executed after job1 and job2 finished
     engine.wait()
 ```
 
@@ -245,9 +268,7 @@ job3 = ThreadJob(has_two_elements, condition=AllSatisfied(conditions=[
 ]))
 
 with Engine() as engine:
-    engine.submit(job3)
-    engine.submit(job2)
-    engine.submit(job1)
+    engine.submit(job3, job2, job1)
     engine.wait()
 ```
 
@@ -275,9 +296,7 @@ with Engine() as engine:
         AfterAnother(job_id=job1.id),
         AfterAnother(job_id=job2.id)
     ]))
-    engine.submit(job3)
-    engine.submit(job2)
-    engine.submit(job1)
+    engine.submit(job3, job2, job1)
     engine.wait()
 ```
 

@@ -57,8 +57,8 @@ def test_get_job_result():
     with Engine() as engine:
         for job_cls in test_job_cls:
             job: Job = job_cls(lambda x: x**2, (2,))
-            fut = engine.submit(job)
-            res = engine.wait_job(fut)
+            engine.submit(job)
+            res = engine.wait_job(job)
             assert res == 4
 
 
@@ -71,8 +71,7 @@ def test_parallel():
         j1 = ProcessJob(sleep_add, (1,))
         j2 = ProcessJob(sleep_add, (2,))
         t1 = time.time()
-        engine.submit(j1)
-        engine.submit(j2)
+        engine.submit(j1, j2)
         engine.wait()
         t2 = time.time()
         assert (t2 - t1) < 5
@@ -253,10 +252,12 @@ def test_async_api():
 
     async def main():
         engine.loop = asyncio.get_running_loop()
-        job = ThreadJob(lambda x: x**2, (2,))
-        await engine.submit_async(job)
+        job1 = ThreadJob(lambda x: x**2, (2,))
+        job2 = ThreadJob(lambda x: x**2, (2,))
+        await engine.submit_async(job1, job2)
         await engine.join()
-        assert job.status == "done"
+        assert job1.status == "done"
+        assert job2.result() == 4
 
     asyncio.run(main())
 

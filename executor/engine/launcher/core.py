@@ -93,7 +93,7 @@ class SyncLauncher(LauncherBase):
 
     def submit(self, *args, **kwargs) -> Job:
         job = self.create_job(args, kwargs)
-        self.engine.submit(job).result()
+        self.engine.submit(job)
         return job
 
     def __call__(self, *args, **kwargs) -> T.Any:

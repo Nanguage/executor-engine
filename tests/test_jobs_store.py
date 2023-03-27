@@ -23,6 +23,7 @@ def test_jobs_cache():
         await engine.join()
 
     asyncio.run(submit_job())
+    assert len(engine.jobs) == 3
     assert len(engine.jobs.done.cache) == 3
 
     old_path = engine.jobs.cache_path
@@ -47,4 +48,3 @@ def test_jobs_cache():
     store = JobStore(None)
     with pytest.raises(RuntimeError):
         store.get_from_cache('test')
-

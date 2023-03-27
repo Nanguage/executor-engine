@@ -70,6 +70,7 @@ class JobStore():
         return job
 
     def set_to_cache(self, key: str, val: Job):
+        """Set job to cache."""
         bytes_ = val.serialization()
         if self.cache is not None:
             self.cache[key] = bytes_
@@ -86,25 +87,34 @@ class JobStore():
         return key in self.mem
 
     def clear(self):
+        """Clear all jobs."""
         self.mem.clear()
         if self.cache is not None:
             self.cache.clear()
 
     def pop(self, key: str) -> Job:
+        """Pop a job from store."""
         job = self.mem.pop(key)
         if self.cache is not None:
             self.cache.pop(key)
         return job
 
     def values(self) -> T.List[Job]:
+        """Get all values(Job)."""
         vals = list(self.mem.values())
         return vals
 
     def keys(self) -> T.List[str]:
+        """Get all keys(Job's id)."""
         return list(self.mem.keys())
 
     def items(self) -> T.List[T.Tuple[str, Job]]:
+        """Get all key-value pairs."""
         return list(self.mem.items())
+
+    def __iter__(self):
+        for job in self.values():
+            yield job
 
     def __del__(self):
         if self.cache is not None:
@@ -228,3 +238,6 @@ class Jobs:
             store = self._stores[status]
             for job in store.values():
                 yield job
+
+    def __len__(self):
+        return sum(len(store) for store in self._stores.values())

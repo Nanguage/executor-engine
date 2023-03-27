@@ -57,7 +57,7 @@ asyncio.run(main())
 # or just `await main()` in jupyter environment
 ```
 
-## 📋 Job
+## 🔄 Job
 
 Job is the basic unit of executor-engine. It represents a task to be executed.
 
@@ -351,9 +351,64 @@ with Engine() as engine:
 See the [API reference](api-reference/engine.md) for more details.
 
 
+### ⚙️ Engine setting
+
+You can set some engine settings by passing a
+[`EngineSetting`](api-reference/engine.md#executor.engine.core.EngineSetting)
+instance to the `Engine` constructor.
+For example, you can set the jobs number limit, turn off
+print traceback, etc.
+
+```python
+from executor.engine import Engine, EngineSetting, ProcessJob
+
+def add(a, b):
+    return a + b
+
+def raise_exception():
+    raise Exception("error")
+
+with Engine(setting=EngineSetting(
+    max_jobs=1,  # only one job can be executed at the same time
+    print_traceback=False,
+)) as engine:
+    job1 = ProcessJob(add, args=(1, 2))
+    job2 = ProcessJob(raise_exception)
+    engine.submit(job1, job2)
+    engine.wait()
+    # job2 will not print traceback
+    print(job1.result())  # 3
+    print(job2.exception())  # Exception: error
+```
+
+More settings are available, see the [API reference](api-reference/engine.md#executor.engine.core.EngineSetting) for more details.
+
 ### 🗂️ Jobs manager
 
-All jobs of an engine are managed by a [`Jobs`](api-reference/job_store.md#executor.engine.manager.Jobs) instance. You can get the jobs manager by `engine.jobs`.
+All jobs of an engine are managed by a [`Jobs`](api-reference/job_store.md#executor.engine.manager.Jobs) instance.
+It caches all jobs on disk, and provides some methods to select jobs by id, status, etc.
+
+```python
+from executor.engine import Engine, ProcessJob
+
+def add(a, b):
+    return a + b
+
+with Engine() as engine:
+    job1 = ProcessJob(add, args=(1, 2))
+    engine.submit(job1)
+    print(engine.jobs.get_job_by_id(job1.id))  # will print job1
+    print(len(engine.jobs.running))  # will print 1
+    job2 = ProcessJob(add, args=(3, 4))
+    engine.submit(job2)
+    print(len(engine.jobs.running))  # will print 2
+    engine.wait()
+    print(len(engine.jobs.done))  # will print 2
+    for job in engine.jobs.done.values():  # iterate all done jobs
+        print(job.result())  # will print 3 and 7
+```
+
+See the [API reference](api-reference/job_store.md#executor.engine.manager.Jobs) for more details.
 
 
 ## 🚀 Launcher API
@@ -390,3 +445,22 @@ async def main():
 
 asyncio.run(main())
 ```
+
+## 📜 Logging settings
+
+Executor engine use `loguru` as the default logger.
+You can configure the logger by importing `executor.engine.log.logger`:
+
+```python
+from executor.engine.log import logger
+
+# add file handler
+logger.add(sys.stderr, format="{time} {level} {message}", filter="my_module", level="INFO")
+
+# change log-string format
+logger.add(sys.stdout, colorize=True, format="<green>{time}</green> <level>{message}</level>")
+```
+
+See `loguru` [documentation](https://github.com/Delgan/loguru) for more details.
+
+

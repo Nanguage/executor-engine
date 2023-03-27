@@ -112,10 +112,6 @@ class JobStore():
         """Get all key-value pairs."""
         return list(self.mem.items())
 
-    def __iter__(self):
-        for job in self.values():
-            yield job
-
     def __del__(self):
         if self.cache is not None:
             self.cache.close()

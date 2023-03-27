@@ -18,26 +18,6 @@ pip install "executor-engine[dask]"
 You can create an `Engine` object and submit jobs to it, then wait for the jobs to finish:
 
 ```python
-from executor.engine import Engine, ProcessJob
-
-engine = Engine()
-engine.start()
-
-def add(a, b):
-    return a + b
-
-job1 = ProcessJob(add, args=(1, 2))
-job2 = ProcessJob(add, args=(job1.future, 4))  # job2 depends on job1
-engine.submit(job1, job2)
-engine.wait_job(job2)
-print(job2.result())  # 7
-
-engine.stop()
-```
-
-`Engine` object allow using the `with` statement to manage the engine's lifecycle.
-
-```python
 from executor.engine import Engine, LocalJob, ThreadJob, ProcessJob
 
 def add(a, b):
@@ -45,13 +25,13 @@ def add(a, b):
 
 with Engine() as engine:
     job1 = LocalJob(add, args=(1, 2))
-    job2 = ThreadJob(add, args=(3, 4))
-    job3 = ProcessJob(add, args=(5, 6))
+    job2 = ThreadJob(add, args=(job1.future, 4))
+    job3 = ProcessJob(add, args=(job2.future, 5))
     engine.submit(job1, job2, job3)
     engine.wait()  # wait all job finished
     print(job1.result())  # 3
     print(job2.result())  # 7
-    print(job3.result())  # 11
+    print(job3.result())  # 12
 ```
 
 Use with asyncio:
@@ -77,9 +57,50 @@ asyncio.run(main())
 # or just `await main()` in jupyter environment
 ```
 
-## 🧰 Extend job types
+## 📋 Job
 
-### SubprocessJob
+Job is the basic unit of executor-engine. It represents a task to be executed.
+
+### 🚦 Job status
+
+Job has 6 status: `created`, `pending`, `running`, `done`, `failed`, `cancelled`.
+
+Here is the state transition diagram of job:
+
+
+```mermaid
+graph LR
+    created -->|engine.submit| pending
+    pending -->|runnable?| running
+    running -->|Success| done
+    running -->|Fail| failed
+    running -->|Cancel| cancelled
+    done -->|rerun| pending
+    failed -->|rerun| pending
+    cancelled -->|rerun| pending
+```
+
+### 🧩 Job types
+
+Executor engine provides 4 builtin job types: [`LocalJob`](api-reference/job.md#executor.engine.job.local.LocalJob), 
+[`ThreadJob`](api-reference/job.md#executor.engine.job.thread.ThreadJob), 
+[`ProcessJob`](api-reference/job.md#executor.engine.job.process.ProcessJob), 
+[`DaskJob`](api-reference/job.md#executor.engine.job.dask.DaskJob)
+
+They are executed by different backends and suitable for different scenarios.
+
+| Job type | Backend | Suitable for |
+| --- | --- | --- |
+| `LocalJob` | `executor.engine.backend.local` | Local function call |
+| `ThreadJob` | `executor.engine.backend.thread` | IO-bound tasks |
+| `ProcessJob` | `executor.engine.backend.process` | CPU-bound tasks |
+| `DaskJob` | `executor.engine.backend.dask` | Distributed tasks |
+
+### 🧰 Extend job types
+
+There are two extend job types: `SubprocessJob` and `WebappJob`. They are used to execute shell commands and launch web applications. They implemente on top of `ProcessJob`.
+
+#### 🖥️ SubprocessJob
 
 `SubprocessJob` is a job type for executing shell commands.
 `SubprocessJob` accept a shell command as its argument. It will execute the command in a subprocess:
@@ -98,7 +119,7 @@ with Engine() as engine:
 ```
 
 
-### WebappJob
+#### 🌐 WebappJob
 
 `WebappJob` is a job type for launching a web application.
 It can accept a function with `ip` and `port` as arguments:
@@ -135,7 +156,7 @@ with Engine() as engine:
     engine.wait()
 ```
 
-## 📝 Conditional job execution
+### ❓ Conditional job execution
 
 After another job:
 
@@ -195,7 +216,7 @@ with Engine() as engine:
     engine.wait()
 ```
 
-### Condition combination
+#### 🔀 Condition combination
 
 `AllSatisfied` is used to combine multiple conditions, all conditions must be satisfied to execute the job:
 
@@ -220,6 +241,11 @@ with Engine() as engine:
     engine.submit(job3, job2, job1)
     engine.wait()
 ```
+
+!!! info
+    When specify the job dependencies using the `JobFuture`
+    like `job2 = ProcessJob(add, args=(1, job1.future))`.
+    Executor engine will automatically inject a `AllSatisfied([job2.condition, AfterOthers([job1.id])])` condition to the job `job2`.
 
 Similarly, `AnySatisfied` is used to combine multiple conditions, any condition is satisfied to execute the job:
 
@@ -250,7 +276,7 @@ with Engine() as engine:
 ```
 
 
-### Custom condition
+#### 🎨 Custom condition
 
 You can also define your own condition by inheriting `Condition` class:
 
@@ -284,6 +310,52 @@ with Engine() as engine:
     engine.wait()
 ```
 
+## 🚂 Engine
+
+`executor.engine` provides a `Engine` class for managing jobs.
+
+In non-async mode, engine will launch a thread to run a asyncio event loop, for scheduling jobs.
+Before submitting jobs, you should start this event loop by calling `engine.start()`.
+And you should stop the event loop by calling `engine.stop()` after all jobs are finished.
+
+```python
+from executor.engine import Engine, ProcessJob
+
+def add(a, b):
+    return a + b
+
+engine = Engine()
+engine.start()
+job1 = ProcessJob(add, args=(1, 2))
+engine.submit(job1)
+engine.wait_job(job1)
+print(job1.result())  # 3
+engine.stop()
+```
+
+The `with statement` is for convenience, it will automatically start and stop the event loop:
+
+```python
+from executor.engine import Engine, ProcessJob
+
+def add(a, b):
+    return a + b
+
+with Engine() as engine:
+    job1 = ProcessJob(add, args=(1, 2))
+    engine.submit(job1)
+    engine.wait_job(job1)
+    print(job1.result())  # 3
+```
+
+See the [API reference](api-reference/engine.md) for more details.
+
+
+### 🗂️ Jobs manager
+
+All jobs of an engine are managed by a [`Jobs`](api-reference/job_store.md#executor.engine.manager.Jobs) instance. You can get the jobs manager by `engine.jobs`.
+
+
 ## 🚀 Launcher API
 
 `executor.engine` provides a launcher API for launching jobs in more efficient way.
@@ -301,4 +373,20 @@ with Engine() as engine:
     job = add.submit(1, 2)
     engine.wait_job(job)
     print(job.result()) # 3
+```
+
+By passing `async_mode=True` to `launcher`, you can use `await` to launch jobs:
+
+```python
+@launcher(async_mode=True)
+def add(a, b):
+    time.sleep(0.5)
+    return a + b
+
+async def main():
+    job = await add.submit(1, 2)
+    await job.join()
+    print(job.result()) # 3
+
+asyncio.run(main())
 ```

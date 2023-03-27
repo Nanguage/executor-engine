@@ -20,8 +20,25 @@ class JobNotFoundError(ExecutorError):
 
 
 class JobStore():
-    """Store jobs"""
+    """Store jobs.
+
+    Attributes:
+        cache: The cache on disk(Use diskcache package).
+            See:
+            [disk-cache's doc](https://github.com/grantjenks/python-diskcache)
+            for more details.
+        mem: In memory store.
+    """
+
+    cache: T.Optional[Cache]
+    mem: T.Dict[str, Job]
+
     def __init__(self, cache_path: T.Optional[Path] = None):
+        """Init.
+
+        Args:
+            cache_path: Cache path.
+        """
         if cache_path is not None:
             self.cache = Cache(str(cache_path))
         else:
@@ -30,11 +47,13 @@ class JobStore():
 
     @classmethod
     def load_from_cache(cls, path: Path):
+        """Load from cache."""
         store = cls(path)
         store.update_from_cache()
         return store
 
     def update_from_cache(self, clear_old=False):
+        """Update from cache."""
         if clear_old:
             self.mem.clear()
         if self.cache is not None:
@@ -43,6 +62,7 @@ class JobStore():
                 self.mem[key] = job
 
     def get_from_cache(self, key: str) -> Job:
+        """Get from cache."""
         if self.cache is None:
             raise RuntimeError("No cache")
         bytes_ = self.cache[key]
@@ -95,8 +115,21 @@ class JobStore():
 
 
 class Jobs:
-    """Jobs manager."""
+    """Jobs manager.
+
+    Attributes:
+        pending: Pending jobs.
+        running: Running jobs.
+        done: Done jobs.
+        failed: Failed jobs.
+        cancelled: Cancelled jobs.
+    """
     valid_statuses = valid_job_statuses
+    pending: JobStore
+    running: JobStore
+    done: JobStore
+    failed: JobStore
+    cancelled: JobStore
 
     def __init__(self, cache_path: Path):
         self.cache_path = cache_path
@@ -112,6 +145,7 @@ class Jobs:
         self.set_attrs_for_read()
 
     def update_from_cache(self, clear_old=True):
+        """Update jobs from cache."""
         for store in self._stores.values():
             store.update_from_cache(clear_old=clear_old)
 
@@ -123,24 +157,30 @@ class Jobs:
         self.cancelled = self._stores['cancelled']
 
     def set_engine(self, engine: "Engine"):
+        """Set engine for all jobs."""
         for job in self.all_jobs():
             job.engine = engine
 
     def clear(self, statuses: T.List[JobStatusType]):
+        """Clear jobs by status."""
         for s in statuses:
             self._stores[s].clear()
 
     def clear_non_active(self):
+        """Clear non-active jobs."""
         self.clear(["done", "failed", "cancelled"])
 
     def clear_all(self):
+        """Clear all jobs."""
         self.clear(self.valid_statuses)
 
     def add(self, job: Job):
+        """Add job to store."""
         store = self._stores[job.status]
         store[job.id] = job
 
     def remove(self, job: Job):
+        """Remove job from store."""
         for tp in self.valid_statuses:
             store = self._stores[tp]
             if job.id in store:
@@ -150,6 +190,7 @@ class Jobs:
             self, job: Job,
             new_status: JobStatusType,
             old_status: T.Optional[JobStatusType] = None):
+        """Move job to another store."""
         if old_status is None:
             old_status = job.status
         if old_status == new_status:
@@ -159,6 +200,7 @@ class Jobs:
         new_store[job.id] = old_store.pop(job.id)
 
     def get_job_by_id(self, job_id: str) -> Job:
+        """Get job by id."""
         for status in self.valid_statuses:
             store = self._stores[status]
             if job_id in store:
@@ -177,9 +219,11 @@ class Jobs:
             return False
 
     def all_jobs(self) -> T.List[Job]:
+        """Get all jobs."""
         return list(iter(self))
 
     def __iter__(self):
+        """Iterate all jobs."""
         for status in self.valid_statuses:
             store = self._stores[status]
             for job in store.values():

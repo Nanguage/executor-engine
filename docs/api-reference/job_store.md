@@ -1,11 +1,11 @@
-# Engine
+# Job manager
 
-::: executor.engine.core.EngineSetting
+::: executor.engine.manager.Jobs
     handler: python
     options:
         show_root_heading: true
 
-::: executor.engine.core.Engine
+::: executor.engine.manager.JobStore
     handler: python
     options:
         show_root_heading: true

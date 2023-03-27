@@ -26,6 +26,7 @@ _engine: T.Optional[Engine] = None
 
 
 def get_default_engine() -> Engine:
+    """Get the default engine."""
     global _engine
     if _engine is None:
         _engine = Engine()
@@ -33,6 +34,7 @@ def get_default_engine() -> Engine:
 
 
 def set_default_engine(engine: Engine):
+    """Set the default engine."""
     global _engine
     _engine = engine
 
@@ -58,6 +60,7 @@ class LauncherBase(object):
 
     @property
     def engine(self) -> Engine:
+        """Get the engine of the launcher."""
         if self._engine is None:
             self._engine = get_default_engine()
             if (self._engine._loop_thread is None) or \
@@ -66,6 +69,7 @@ class LauncherBase(object):
         return self._engine
 
     def create_job(self, args, kwargs, **attrs) -> 'Job':
+        """Create a job from the launcher."""
         job_class = job_type_classes[self.job_type]
         job_attrs = copy(self.job_attrs)
         job_attrs.update(attrs)
@@ -89,19 +93,23 @@ class SyncLauncher(LauncherBase):
 
     @property
     def async_mode(self):
+        """Check if the launcher is in async mode."""
         return False
 
     def submit(self, *args, **kwargs) -> Job:
+        """Submit a job to the engine."""
         job = self.create_job(args, kwargs)
         self.engine.submit(job)
         return job
 
     def __call__(self, *args, **kwargs) -> T.Any:
+        """Submit a job to the engine and wait for the result."""
         job = self.submit(*args, **kwargs)
         self.engine.wait_job(job)
         return self._fetch_result(job)
 
     def to_async(self) -> "AsyncLauncher":
+        """Convert the launcher to async mode."""
         return AsyncLauncher(
             self.target_func, self.engine, self.job_type,
             self.name, self.description, self.tags, **self.job_attrs,
@@ -111,19 +119,23 @@ class SyncLauncher(LauncherBase):
 class AsyncLauncher(LauncherBase):
     @property
     def async_mode(self):
+        """Check if the launcher is in async mode."""
         return True
 
     async def submit(self, *args, **kwargs):
+        """Submit a job to the engine."""
         job = self.create_job(args, kwargs)
         await self.engine.submit_async(job)
         return job
 
     async def __call__(self, *args, **kwargs) -> T.Any:
+        """Submit a job to the engine and wait for the result."""
         job = await self.submit(*args, **kwargs)
         await job.join()
         return self._fetch_result(job)
 
     def to_sync(self) -> "SyncLauncher":
+        """Convert the launcher to sync mode."""
         return SyncLauncher(
             self.target_func, self.engine, self.job_type,
             self.name, self.description, self.tags, **self.job_attrs,
@@ -131,14 +143,27 @@ class AsyncLauncher(LauncherBase):
 
 
 def launcher(
-        func=None,
+        func: T.Optional[T.Callable] = None,
         engine: T.Optional['Engine'] = None,
         async_mode: bool = False,
         job_type: JOB_TYPES = 'process',
         name: T.Optional[str] = None,
         description: T.Optional[str] = None,
         tags: T.Optional[T.List[str]] = None,
-        **job_attrs):
+        **job_attrs: T.Dict):
+    """Create a launcher for a function.
+
+    Args:
+        func: The function to be launched.
+        engine: The engine to use. If not specified, the default engine
+            will be used.
+        async_mode: If True, the launcher will be AsyncLauncher.
+        job_type: The job type to use. Default is 'process'.
+        name: The name of the launcher.
+        description: The description of the launcher.
+        tags: The tags of the launcher.
+        job_attrs: The attributes for creating the job.
+    """
     if func is None:
         return functools.partial(
             launcher, engine=engine, async_mode=async_mode,

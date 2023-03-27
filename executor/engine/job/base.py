@@ -40,6 +40,7 @@ class StopResolve(Exception):
 
 class JobFuture():
     def __init__(self, job_id: str) -> None:
+        """A future object for job."""
         self.job_id = job_id
         self._result: T.Optional[T.Any] = None
         self._exception: T.Optional[Exception] = None
@@ -85,6 +86,27 @@ class Job(ExecutorObj):
             change_dir: bool = False,
             **attrs
             ) -> None:
+        """Base class for job.
+
+        Args:
+            func: The function to be executed.
+            args: The positional arguments to be passed to the function.
+            kwargs: The keyword arguments to be passed to the function.
+            callback: The callback function to be called when the job is done.
+            error_callback: The callback function to be called
+                when the job is failed.
+            retries: The number of retries when the job is failed.
+            retry_time_delta: The time delta between retries.
+            name: The name of the job.
+            condition: The condition of the job.
+            wait_time_delta: The time delta between each
+                check of the condition.
+            redirect_out_err: Whether to redirect the stdout
+                and stderr to the log.
+            change_dir: Whether to change the working directory
+                to the log directory.
+            **attrs: The attributes of the job.
+        """
         super().__init__()
         self.future = JobFuture(self.id)
         self.func = func

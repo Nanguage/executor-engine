@@ -17,8 +17,24 @@ if T.TYPE_CHECKING:
 
 @dataclass
 class EngineSetting:
-    max_threads: T.Optional[int] = None
-    max_processes: T.Optional[int] = None
+    """Engine setting.
+
+    Args:
+        max_thread_jobs: Maximum number of thread jobs,
+            if not set, no limit.
+        max_process_jobs: Maximum number of process jobs,
+            if not set, no limit.
+        max_dask_jobs: Maximum number of dask jobs,
+            if not set, no limit.
+        max_jobs: Maximum number of jobs,
+            if not set, no limit.
+        cache_path: Cache path,
+            if not set, will create a cache directory in
+            .executor/{engine.id}.
+        print_traceback: Whether to print traceback when job failed.
+    """
+    max_thread_jobs: T.Optional[int] = None
+    max_process_jobs: T.Optional[int] = None
     max_dask_jobs: T.Optional[int] = None
     max_jobs: T.Optional[int] = 20
     cache_path: T.Optional[str] = None
@@ -27,6 +43,14 @@ class EngineSetting:
 
 @dataclass
 class Resource:
+    """Resource of engine.
+
+    Args:
+        n_thread: Number of thread jobs.
+        n_process: Number of process jobs.
+        n_dask: Number of dask jobs.
+        n_job: Number of jobs.
+    """
     n_thread: T.Union[int, float]
     n_process: T.Union[int, float]
     n_dask: T.Union[int, float]
@@ -40,6 +64,17 @@ class Engine(ExecutorObj):
             jobs: T.Optional[Jobs] = None,
             loop: T.Optional[asyncio.AbstractEventLoop] = None,
             ) -> None:
+        """
+        Args:
+            setting: Engine setting. Defaults to None.
+            jobs: Jobs manager. Defaults to None.
+            loop: Event loop. Defaults to None.
+
+        Attributes:
+            setting: Engine setting.
+            resource: Resource of engine.
+            jobs: Jobs manager.
+        """
         super().__init__()
         if setting is None:
             setting = EngineSetting()
@@ -61,6 +96,7 @@ class Engine(ExecutorObj):
 
     @property
     def loop(self):
+        """Event loop of engine."""
         if self._loop is None:
             loop = asyncio.new_event_loop()
             logger.info(f"{self} created new event loop.")
@@ -122,8 +158,8 @@ class Engine(ExecutorObj):
         setting = self.setting
         logger.info(f"Load setting: {setting}")
         self.resource = Resource(
-            n_thread=setting.max_threads or float('inf'),
-            n_process=setting.max_processes or float('inf'),
+            n_thread=setting.max_thread_jobs or float('inf'),
+            n_process=setting.max_process_jobs or float('inf'),
             n_dask=setting.max_dask_jobs or float('inf'),
             n_job=setting.max_jobs or float('inf'),
         )
@@ -157,29 +193,41 @@ class Engine(ExecutorObj):
         logger.info(f"Remove job from engine: {job}")
         self.jobs.remove(job)
 
-    def cancel(self, job: Job):
+    def cancel(self, *jobs: Job):
         """Cancel a job."""
-        fut = asyncio.run_coroutine_threadsafe(
-            job.cancel(), self.loop)
-        fut.result()
-
-    def cancel_all(self):
-        """Cancel all pending and running jobs."""
-        running = self.jobs.running.values()
-        pending = self.jobs.pending.values()
         futures = []
-        for job in (pending + running):
+        for job in jobs:
             fut = asyncio.run_coroutine_threadsafe(
                 job.cancel(), self.loop)
             futures.append(fut)
         concurrent.futures.wait(futures)
+
+    async def cancel_all_async(self):
+        """Cancel all pending and running jobs."""
+        running = self.jobs.running.values()
+        pending = self.jobs.pending.values()
+        tasks = []
+        for job in (pending + running):
+            tasks.append(job.cancel())
+        await asyncio.gather(*tasks)
+
+    def cancel_all(self):
+        """Cancel all pending and running jobs."""
+        fut = asyncio.run_coroutine_threadsafe(
+            self.cancel_all_async(), self.loop)
+        fut.result()
 
     def wait_job(
             self, job: Job,
             timeout: T.Optional[float] = None,
             ) -> T.Optional[T.Any]:
         """Block until job is finished or timeout.
-        Return job result if job is done."""
+        Return job result if job is done.
+
+        Args:
+            job: Job to wait.
+            timeout: Timeout in seconds.
+        """
         fut = asyncio.run_coroutine_threadsafe(
             job.join(timeout=timeout), self.loop)
         fut.result()
@@ -192,7 +240,12 @@ class Engine(ExecutorObj):
             self,
             timeout: T.Optional[float] = None,
             time_delta: float = 0.2):
-        """Block until all jobs are finished or timeout."""
+        """Block until all jobs are finished or timeout.
+
+        Args:
+            timeout: Timeout in seconds.
+            time_delta: Time interval to check job status.
+        """
         total_time = timeout if timeout is not None else float('inf')
         while True:
             n_wait_jobs = len(self.jobs.running) + len(self.jobs.pending)

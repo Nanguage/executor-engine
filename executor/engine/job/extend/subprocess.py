@@ -1,96 +1,123 @@
-import os
 import copy
 import shlex
 import typing as T
 import subprocess as subp
+from pathlib import Path
 
 from ..condition import Condition
-from ..process import ProcessJob
+from ..thread import ThreadJob
+from ..base import Job
 
 from cmd2func.runner import ProcessRunner
 
 
-class SubprocessJob(ProcessJob):
-    def __init__(
-            self,
-            cmd: str, record_cmd: bool = True,
-            callback: T.Optional[T.Callable[[T.Any], None]] = None,
-            error_callback: T.Optional[T.Callable[[Exception], None]] = None,
-            name: T.Optional[str] = None,
-            condition: T.Optional[Condition] = None,
-            time_delta: float = 0.01,
-            redirect_out_err: bool = False,
-            change_dir: bool = True,
-            **attrs
-            ) -> None:
-        self.cmd = cmd
-        self.record_cmd = record_cmd
-        if name is None:
-            name = cmd.split()[0]
-        attrs.update({
-            'cmd': cmd,
-        })
-        super().__init__(
-            lambda x: x,
-            callback=callback,
-            error_callback=error_callback,
-            name=name,
-            condition=condition,
-            wait_time_delta=time_delta,
-            redirect_out_err=redirect_out_err,
-            change_dir=change_dir,
-            **attrs
-        )
+def SubprocessJob(
+    cmd: str, record_cmd: bool = True,
+    base_class: T.Type[Job] = ThreadJob,
+    callback: T.Optional[T.Callable[[T.Any], None]] = None,
+    error_callback: T.Optional[T.Callable[[Exception], None]] = None,
+    retries: int = 0,
+    retry_time_delta: float = 0.0,
+    name: T.Optional[str] = None,
+    condition: T.Optional[Condition] = None,
+    wait_time_delta: float = 0.01,
+    redirect_out_err: bool = False,
+    change_dir: bool = True,
+    **attrs
+):
+    """Create a job that runs a subprocess.
 
-    def __repr__(self) -> str:
-        attrs = [
-            f"status={self.status}",
-            f"id={self.id}",
-            f"cmd={self.cmd}",
-        ]
-        if self.condition:
-            attrs.append(f" condition={repr(self.condition)}")
-        attr_str = " ".join(attrs)
-        return f"<{self.__class__.__name__} {attr_str}/>"
+    Args:
+        cmd: The command to run.
+        record_cmd: Whether to record the command to a file.
+        base_class: The base class of the job.
+        callback: The callback function.
+        error_callback: The error callback function.
+        retries: The number of retries.
+        retry_time_delta: The time delta between retries.
+        name: The name of the job.
+        condition: The condition of the job.
+        wait_time_delta: The time delta between each check.
+        redirect_out_err: Whether to redirect stdout and stderr to files.
+        change_dir: Whether to change the working directory to the cache
+            directory.
+        **attrs: Other attributes of the job.
+    """
+    class _SubprocessJob(base_class):
+        def __init__(self) -> None:
+            self.cmd = cmd
+            self.record_cmd = record_cmd
+            nonlocal name
+            if name is None:
+                name = cmd.split()[0]
+            attrs.update({
+                'cmd': cmd,
+            })
+            super().__init__(
+                lambda x: x,
+                callback=callback,
+                error_callback=error_callback,
+                retries=retries,
+                retry_time_delta=retry_time_delta,
+                name=name,
+                condition=condition,
+                wait_time_delta=wait_time_delta,
+                redirect_out_err=redirect_out_err,
+                change_dir=change_dir,
+                **attrs
+            )
 
-    def process_func(self):
-        cmd = copy.copy(self.cmd)
-        record_cmd = copy.copy(self.record_cmd)
-        change_dir = copy.copy(self.change_dir)
+        def __repr__(self) -> str:
+            attrs = [
+                f"status={self.status}",
+                f"id={self.id}",
+                f"cmd={self.cmd}",
+            ]
+            if self.condition:
+                attrs.append(f" condition={repr(self.condition)}")
+            attr_str = " ".join(attrs)
+            return f"<{self.__class__.__name__} {attr_str}/>"
 
-        cache_dir = self.cache_dir.resolve()
-        path_sh = cache_dir / 'command.sh'
-        work_dir = cache_dir.resolve()
+        def process_func(self):
+            cmd = copy.copy(self.cmd)
+            record_cmd = copy.copy(self.record_cmd)
 
-        def record_command():
-            with open(path_sh, 'w') as f:
-                f.write(cmd + "\n")
+            cache_dir = self.cache_dir.resolve()
+            path_sh = cache_dir / 'command.sh'
+            if self.change_dir:
+                work_dir = cache_dir.resolve()
+            else:
+                work_dir = Path.cwd().resolve()
 
-        if self.redirect_out_err:
-            path_stdout = cache_dir / 'stdout.txt'
-            path_stderr = cache_dir / 'stderr.txt'
+            def record_command():
+                with open(path_sh, 'w') as f:
+                    f.write(cmd + "\n")
 
-            def run_cmd():  # pragma: no cover
-                runner = ProcessRunner(cmd)
-                runner.run()
-                with open(path_stdout, 'w') as fo, \
-                     open(path_stderr, 'w') as fe:
-                    retcode = runner.write_stream_until_stop(fo, fe)
+            if self.redirect_out_err:
+                path_stdout = cache_dir / 'stdout.txt'
+                path_stderr = cache_dir / 'stderr.txt'
+
+                def run_cmd():  # pragma: no cover
+                    runner = ProcessRunner(cmd)
+                    runner.run(cwd=work_dir.as_posix())
+                    with open(path_stdout, 'w') as fo, \
+                         open(path_stderr, 'w') as fe:
+                        retcode = runner.write_stream_until_stop(fo, fe)
+                    return retcode
+            else:
+                def run_cmd():
+                    p = subp.Popen(shlex.split(cmd), cwd=work_dir)
+                    retcode = p.wait()
+                    return retcode
+
+            def func():
+                if record_cmd:
+                    record_command()
+                retcode = run_cmd()
+                if retcode > 0:
+                    raise subp.SubprocessError(
+                        f"Command '{cmd}' run failed, return code: {retcode}")
                 return retcode
-        else:
-            def run_cmd():
-                p = subp.Popen(shlex.split(cmd))
-                retcode = p.wait()
-                return retcode
+            self.func = func
 
-        def func():
-            if record_cmd:
-                record_command()
-            if change_dir:
-                os.chdir(work_dir)
-            retcode = run_cmd()
-            if retcode > 0:
-                raise subp.SubprocessError(
-                    f"Command '{cmd}' run failed, return code: {retcode}")
-            return retcode
-        self.func = func
+    return _SubprocessJob()

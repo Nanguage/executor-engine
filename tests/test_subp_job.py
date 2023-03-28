@@ -51,7 +51,9 @@ def test_record_command():
 
     async def submit_job():
         cmd = "python -c 'print(1 + 1)'"
-        job = SubprocessJob(cmd, record_cmd=True, error_callback=lambda err: print(err))
+        job = SubprocessJob(
+            cmd, record_cmd=True,
+            error_callback=lambda err: print(err))
         await engine.submit_async(job)
         await job.join()
         assert job.result() == 0
@@ -65,14 +67,19 @@ def test_condition():
     engine = Engine()
 
     lis = []
+
     def append(x):
         lis.append(x)
 
     async def submit_job():
         cmd = "python -c 'print(1 + 1)'"
         job1 = SubprocessJob(cmd, callback=lambda _: append(1), )
-        job2 = SubprocessJob(cmd, callback=lambda _: append(2), condition=AfterAnother(job_id=job1.id))
-        job3 = SubprocessJob(cmd, callback=lambda _: append(3), condition=AfterAnother(job_id=job2.id))
+        job2 = SubprocessJob(
+            cmd, callback=lambda _: append(2),
+            condition=AfterAnother(job_id=job1.id))
+        job3 = SubprocessJob(
+            cmd, callback=lambda _: append(3),
+            condition=AfterAnother(job_id=job2.id))
         await engine.submit_async(job3)
         await engine.submit_async(job2)
         await engine.submit_async(job1)

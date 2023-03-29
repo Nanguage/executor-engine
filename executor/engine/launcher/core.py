@@ -8,17 +8,25 @@ from cmd2func.core import Cmd2Func
 
 from ..core import Engine
 from ..job import Job, LocalJob, ThreadJob, ProcessJob
-from ..job.extend import SubprocessJob
+from ..job.extend import SubprocessJob, WebappJob
 
 
-job_type_classes: T.Dict[str, T.Type[Job]] = {
+Job_or_ExtJob = T.Union[T.Type[Job], T.Callable[..., Job]]
+
+
+job_type_classes: T.Dict[str, Job_or_ExtJob] = {
     'local': LocalJob,
     'thread': ThreadJob,
     'process': ProcessJob,
+    'subprocess': SubprocessJob,
+    'webapp': WebappJob,
 }
 
 
-JOB_TYPES = T.Literal['local', 'thread', 'process', 'subprocess']
+JOB_TYPES = T.Literal[
+    'local', 'thread', 'process',
+    'subprocess', 'webapp'
+]
 
 
 _engine: T.Optional[Engine] = None
@@ -52,7 +60,8 @@ class LauncherBase(object):
         self.__signature__ = inspect.signature(target_func)
         self.job_type = job_type
         if isinstance(target_func, Cmd2Func):
-            self.job_type = 'subprocess'
+            if self.job_type != 'webapp':
+                self.job_type = 'subprocess'
         self.desc = parse_func(target_func)
         self.name = name or target_func.__name__
         self.description = description or self.target_func.__doc__
@@ -74,15 +83,16 @@ class LauncherBase(object):
         """Create a job from the launcher."""
         job_attrs = copy(self.job_attrs)
         job_attrs.update(attrs)
+        job_class = job_type_classes[self.job_type]
         if isinstance(self.target_func, Cmd2Func):
+            assert job_class in (SubprocessJob, WebappJob)
             cmd_or_gen = self.target_func.get_cmd_str(*args, **kwargs)
             if isinstance(cmd_or_gen, str):
                 cmd = cmd_or_gen
             else:
                 cmd = next(cmd_or_gen)
-            job = SubprocessJob(cmd, **job_attrs)
+            job = job_class(cmd, **job_attrs)  # type: ignore
         else:
-            job_class = job_type_classes[self.job_type]
             job = job_class(
                 self.target_func, args, kwargs,
                 **job_attrs

@@ -111,6 +111,8 @@ def test_cmd2func_launcher():
     def add(a, b):
         return f"python -c 'print({a} + {b})'"
 
+    assert add.job_type == 'subprocess'
+
     @launcher
     @cmd2func
     def add2(a, b):
@@ -122,3 +124,16 @@ def test_cmd2func_launcher():
         engine.wait()
         assert job.result() == 0
         assert job2.result() == 0
+
+
+def test_webapp_launcher():
+    @launcher(job_type='webapp')
+    @cmd2func
+    def simple_webapp():
+        return "python -m http.server -b {ip} {port}"
+
+    with Engine() as engine:
+        job = simple_webapp.submit()
+        time.sleep(2)
+        assert job.status == 'running'
+        engine.cancel(job)

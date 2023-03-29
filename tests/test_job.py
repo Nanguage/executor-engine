@@ -5,7 +5,6 @@ import pytest
 
 from executor.engine.core import Engine, EngineSetting
 from executor.engine.job import LocalJob, ThreadJob, ProcessJob
-from executor.engine.job.base import get_callable_name
 from executor.engine.job.base import JobEmitError, InvalidStateError
 from executor.engine.job.condition import AfterAnother, AllSatisfied
 
@@ -79,25 +78,6 @@ def test_job_retry():
         engine.submit(job)
         time.sleep(5)
     assert job.retry_remain == 0
-
-
-def test_get_callable_name():
-    def a():
-        pass
-
-    assert get_callable_name(a) == "a"
-
-    class A():
-        def __call__(self):
-            pass
-
-    assert get_callable_name(A()) == "A"
-
-    class B():
-        def __init__(self, func):
-            self.func = func
-
-    assert get_callable_name(B(a)) == "a"
 
 
 def test_dependency():

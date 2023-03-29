@@ -9,6 +9,7 @@ from cmd2func.core import Cmd2Func
 from ..core import Engine
 from ..job import Job, LocalJob, ThreadJob, ProcessJob
 from ..job.extend import SubprocessJob, WebappJob
+from ..utils import get_callable_name
 
 
 Job_or_ExtJob = T.Union[T.Type[Job], T.Callable[..., Job]]
@@ -63,7 +64,7 @@ class LauncherBase(object):
             if self.job_type != 'webapp':
                 self.job_type = 'subprocess'
         self.desc = parse_func(target_func)
-        self.name = name or target_func.__name__
+        self.name = name or get_callable_name(target_func)
         self.description = description or self.target_func.__doc__
         functools.update_wrapper(self, target_func)
         self.tags = tags or []

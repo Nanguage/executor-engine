@@ -7,6 +7,7 @@ from executor.engine.utils import (
     PortManager,
     RangeCheckError, TypeCheckError,
     get_event_loop, event_loop,
+    get_callable_name
 )
 
 import pytest
@@ -70,3 +71,22 @@ def test_get_event_loop():
 
     with event_loop() as loop:
         loop.run_until_complete(main())
+
+
+def test_get_callable_name():
+    def a():
+        pass
+
+    assert get_callable_name(a) == "a"
+
+    class A():
+        def __call__(self):
+            pass
+
+    assert get_callable_name(A()) == "A"
+
+    class B():
+        def __init__(self, func):
+            self.func = func
+
+    assert get_callable_name(B(a)) == "a"

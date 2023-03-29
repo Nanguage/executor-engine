@@ -16,22 +16,11 @@ from ..middle.capture import CaptureOut
 from ..middle.dir import ChDir
 from ..log import logger
 from ..base import ExecutorObj
+from ..utils import get_callable_name
 
 
 if T.TYPE_CHECKING:
     from ..core import Engine
-
-
-def get_callable_name(callable) -> str:
-    if hasattr(callable, "func"):
-        inner_func = getattr(callable, "func")
-        return get_callable_name(inner_func)
-    elif hasattr(callable, "__name__"):
-        return getattr(callable, "__name__")
-    elif hasattr(callable, "__class__"):
-        return getattr(callable, "__class__").__name__
-    else:  # pragma: no cover
-        return str(callable)
 
 
 class StopResolve(Exception):

@@ -22,7 +22,7 @@ def SubprocessJob(
     condition: T.Optional[Condition] = None,
     wait_time_delta: float = 0.01,
     redirect_out_err: bool = False,
-    change_dir: bool = True,
+    target_dir: str = "$current_dir",
     **attrs
 ):
     """Create a job that runs a subprocess.
@@ -39,19 +39,36 @@ def SubprocessJob(
         condition: The condition of the job.
         wait_time_delta: The time delta between each check.
         redirect_out_err: Whether to redirect stdout and stderr to files.
-        change_dir: Whether to change the working directory to the cache
-            directory.
+        target_dir: The target directory path for run the command.
+            Use '$cache_dir' to represent the cache directory of the job.
+            Use '$current_dir' to represent the current directory of the job.
+            Default is '$current_dir'.
         **attrs: Other attributes of the job.
     """
-    class _SubprocessJob(base_class):
+    class _SubprocessJob(base_class):  # type: ignore
+        cmd: str
+        target_dir: str
+
+        repr_attrs = [
+            ('status', lambda self: self.status),
+            ('id', lambda self: self.id),
+            ('cmd', lambda self: self.cmd),
+            ('target_dir', lambda self: self.target_dir),
+            ('base_class', lambda _: base_class.__name__),
+            ("condition", lambda self: self.condition),
+            ("retry_remain", lambda self: self.retry_remain),
+        ]
+
         def __init__(self) -> None:
             self.cmd = cmd
             self.record_cmd = record_cmd
             nonlocal name
             if name is None:
                 name = cmd.split()[0]
+            self.target_dir = self.resolve_target_dir(target_dir)
             attrs.update({
                 'cmd': cmd,
+                'target_dir': target_dir,
             })
             super().__init__(
                 lambda x: x,
@@ -63,31 +80,23 @@ def SubprocessJob(
                 condition=condition,
                 wait_time_delta=wait_time_delta,
                 redirect_out_err=redirect_out_err,
-                change_dir=change_dir,
                 **attrs
             )
 
-        def __repr__(self) -> str:
-            attrs = [
-                f"status={self.status}",
-                f"id={self.id}",
-                f"cmd={self.cmd}",
-            ]
-            if self.condition:
-                attrs.append(f" condition={repr(self.condition)}")
-            attr_str = " ".join(attrs)
-            return f"<{self.__class__.__name__} {attr_str}/>"
+        def resolve_target_dir(self, target_dir: str) -> str:
+            if target_dir == "$cache_dir":
+                return self.cache_dir.resolve().as_posix()
+            elif target_dir == "$current_dir":
+                return Path.cwd().resolve().as_posix()
+            else:
+                return target_dir
 
         def process_func(self):
             cmd = copy.copy(self.cmd)
             record_cmd = copy.copy(self.record_cmd)
-
+            target_dir = copy.copy(self.target_dir)
             cache_dir = self.cache_dir.resolve()
             path_sh = cache_dir / 'command.sh'
-            if self.change_dir:
-                work_dir = cache_dir.resolve()
-            else:
-                work_dir = Path.cwd().resolve()
 
             def record_command():
                 with open(path_sh, 'w') as f:
@@ -99,14 +108,14 @@ def SubprocessJob(
 
                 def run_cmd():  # pragma: no cover
                     runner = ProcessRunner(cmd)
-                    runner.run(cwd=work_dir.as_posix())
+                    runner.run(cwd=target_dir)
                     with open(path_stdout, 'w') as fo, \
                          open(path_stderr, 'w') as fe:
                         retcode = runner.write_stream_until_stop(fo, fe)
                     return retcode
             else:
                 def run_cmd():
-                    p = subp.Popen(shlex.split(cmd), cwd=work_dir)
+                    p = subp.Popen(shlex.split(cmd), cwd=target_dir)
                     retcode = p.wait()
                     return retcode
 

@@ -1,5 +1,5 @@
 from .subprocess import SubprocessJob
-from .webapp import WebAppJob
+from .webapp import WebappJob
 
 
-__all__ = ["SubprocessJob", "WebAppJob"]
+__all__ = ["SubprocessJob", "WebappJob"]

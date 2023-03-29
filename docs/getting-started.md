@@ -98,11 +98,17 @@ They are executed by different backends and suitable for different scenarios.
 
 ### 🧰 Extend job types
 
-There are two extend job types: `SubprocessJob` and `WebappJob`. They are used to execute shell commands and launch web applications. They implemente on top of `ProcessJob`.
+There are two extend job types:
+[`SubprocessJob`](api-reference/extend_job.md#executor.engine.job.extend.SubprocessJob)
+and
+[`WebappJob`](api-reference/extend_job.md#executor.engine.job.extend.WebappJob)
+. They are used to execute shell commands and launch web applications.
+The extend job types can based on the job types above(`LocalJob`, `ThreadJob`, `ProcessJob`, `DaskJob`).
 
 #### 🖥️ SubprocessJob
 
-`SubprocessJob` is a job type for executing shell commands.
+[`SubprocessJob`](api-reference/extend_job.md#executor.engine.job.extend.SubprocessJob)
+is a job type for executing shell commands.
 `SubprocessJob` accept a shell command as its argument. It will execute the command in a subprocess:
 
 ```python
@@ -121,12 +127,13 @@ with Engine() as engine:
 
 #### 🌐 WebappJob
 
-`WebappJob` is a job type for launching a web application.
+[`WebappJob`](api-reference/extend_job.md#executor.engine.job.extend.WebappJob) 
+is a job type for launching a web application.
 It can accept a function with `ip` and `port` as arguments:
 
 ```python
 from executor.engine import Engine
-from executor.engine.job.extend import WebAppJob
+from executor.engine.job.extend import WebappJob
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 def run_simple_httpd(ip: str, port: int):
@@ -135,7 +142,7 @@ def run_simple_httpd(ip: str, port: int):
     httpd.serve_forever()
 
 with Engine() as engine:
-    job = WebAppJob(run_simple_httpd, ip="127.0.0.1", port=8000)
+    job = WebappJob(run_simple_httpd, ip="127.0.0.1", port=8000)
     engine.submit(job)
     print("Open your browser and visit http://127.0.0.1:8000")
     engine.wait()
@@ -145,10 +152,10 @@ with Engine() as engine:
 
 ```python
 from executor.engine import Engine
-from executor.engine.job.extend import WebAppJob
+from executor.engine.job.extend import WebappJob
 
 with Engine() as engine:
-    job = WebAppJob(
+    job = WebappJob(
         "python -m http.server -b {ip} {port}",
         ip="127.0.0.1", port=8000)
     engine.submit(job)
@@ -215,6 +222,8 @@ with Engine() as engine:
     engine.submit(job)
     engine.wait()
 ```
+
+See [Condition](api-reference/condition.md) for more details.
 
 #### 🔀 Condition combination
 

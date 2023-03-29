@@ -27,6 +27,7 @@ nav:
   - API Reference:
     - api-reference/engine.md
     - api-reference/job.md
+    - api-reference/extend_job.md
     - api-reference/condition.md
     - api-reference/launcher.md
     - api-reference/job_store.md

@@ -7,19 +7,16 @@ from funcdesc import parse_func
 
 from ..core import Engine
 from ..job import Job, LocalJob, ThreadJob, ProcessJob
-from ..job.extend import SubprocessJob, WebAppJob
 
 
 job_type_classes: T.Dict[str, T.Type[Job]] = {
     'local': LocalJob,
     'thread': ThreadJob,
     'process': ProcessJob,
-    'subprocess': SubprocessJob,
-    'webapp': WebAppJob,
 }
 
 
-JOB_TYPES = T.Literal['local', 'thread', 'process', 'subprocess', 'webapp']
+JOB_TYPES = T.Literal['local', 'thread', 'process']
 
 
 _engine: T.Optional[Engine] = None

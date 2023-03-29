@@ -15,7 +15,7 @@ from ...utils import PortManager, ExecutorError
 LauncherFunc = T.Callable[[str, int], None]
 
 
-def WebAppJob(
+def WebappJob(
     web_launcher: T.Union[LauncherFunc, str],
     ip: str = "127.0.0.1", port: T.Optional[int] = None,
     base_class: T.Type[Job] = ProcessJob,
@@ -27,11 +27,43 @@ def WebAppJob(
     retry_time_delta: float = 0.0,
     name: T.Optional[str] = None,
     condition: T.Optional[Condition] = None,
-    time_delta: float = 0.01,
+    wait_time_delta: float = 0.01,
     redirect_out_err: bool = False,
     **attrs
 ):
-    class _WebAppJob(base_class):
+    """Create a job that runs a web app.
+
+    Args:
+        web_launcher: The function to launch the web app.
+            The function should accept two arguments: ip and port.
+        ip: The ip address of the web app.
+        port: The port of the web app. If None, will find a free port.
+        base_class: The base class of the job.
+        check_times: The number of times to check the web app.
+        check_delta: The time delta between each check.
+        callback: The callback function.
+        error_callback: The error callback function.
+        retries: The number of retries.
+        retry_time_delta: The time delta between retries.
+        name: The name of the job.
+        condition: The condition of the job.
+        wait_time_delta: The time delta between each check.
+        redirect_out_err: Whether to redirect stdout and stderr to files.
+        **attrs: Other attributes of the job.
+    """
+    class _WebAppJob(base_class):  # type: ignore
+        ip: str
+        port: T.Optional[int]
+
+        repr_attrs = [
+            ('status', lambda self: self.status),
+            ('id', lambda self: self.id),
+            ('addr', lambda self: f'{self.ip}:{self.port}'),
+            ('base_class', lambda _: base_class.__name__),
+            ("condition", lambda self: self.condition),
+            ("retry_remain", lambda self: self.retry_remain),
+        ]
+
         def __init__(self) -> None:
             self.ip = ip
             if ip not in ("127.0.0.1", "localhost", "0.0.0.0"):
@@ -51,7 +83,7 @@ def WebAppJob(
                 retry_time_delta=retry_time_delta,
                 name=name,
                 condition=condition,
-                wait_time_delta=time_delta,
+                wait_time_delta=wait_time_delta,
                 redirect_out_err=redirect_out_err,
                 **attrs
             )
@@ -67,17 +99,6 @@ def WebAppJob(
                 if not callable(web_launcher):
                     raise TypeError(
                         "web_launcher should be a callable object or str.")
-
-        def __repr__(self) -> str:
-            attrs = [
-                f"status={self.status}",
-                f"id={self.id}",
-                f"address={self.ip}:{self.port}",
-            ]
-            if self.condition:
-                attrs.append(f" condition={repr(self.condition)}")
-            attr_str = " ".join(attrs)
-            return f"<{self.__class__.__name__} {attr_str}/>"
 
         def consume_resource(self) -> bool:
             if super().consume_resource():

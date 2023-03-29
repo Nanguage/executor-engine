@@ -69,6 +69,17 @@ class JobFuture():
 class Job(ExecutorObj):
 
     status = JobStatusAttr()
+    repr_attrs: T.List[T.Tuple[str, T.Callable[["Job"], T.Any]]] = [
+        ("status", lambda self: self.status),
+        ("id", lambda self: self.id),
+        ("func", lambda self: get_callable_name(self.func)),
+        ("condition", lambda self: self.condition),
+        ("retry_remain", lambda self: self.retry_remain),
+    ]
+
+    func: T.Callable
+    condition: T.Optional[Condition]
+    retry_remain: int
 
     def __init__(
             self,
@@ -135,16 +146,12 @@ class Job(ExecutorObj):
         self.dep_job_ids: T.List[str] = []
 
     def __repr__(self) -> str:
-        func_name = get_callable_name(self.func)
-        attrs = [
-            f"status={self.status}",
-            f"id={self.id}",
-            f"func={func_name}",
-        ]
-        if self.condition:
-            attrs.append(f" condition={repr(self.condition)}")
-        if self.retry_remain > 0:
-            attrs.append(f" retry_remain={self.retry_remain}")
+        attrs = []
+        for attr_name, attr_func in self.repr_attrs:
+            attr_value = attr_func(self)
+            if bool(attr_value) is False:
+                continue
+            attrs.append(f"{attr_name}={attr_value}")
         attr_str = " ".join(attrs)
         return f"<{self.__class__.__name__} {attr_str}>"
 

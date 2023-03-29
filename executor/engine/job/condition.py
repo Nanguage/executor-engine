@@ -20,7 +20,12 @@ class Condition():
 @dataclass
 class AfterAnother(Condition):
     """Condition that the job is executed after
-    another job is done/failed/cancelled."""
+    another job is done/failed/cancelled.
+
+    Attributes:
+        job_id: The id of the job.
+        statuses: The statuses of the job that satisfy the condition.
+    """
 
     job_id: str
     statuses: T.Iterable[JobStatusType] = ("done", "failed", "cancelled")
@@ -40,7 +45,15 @@ class AfterAnother(Condition):
 @dataclass
 class AfterOthers(Condition):
     """Condition that the job is executed after
-    other jobs are done/failed/cancelled."""
+    other jobs are done/failed/cancelled.
+
+    Attributes:
+        job_ids: The ids of the jobs.
+        statuses: The statuses of the jobs that satisfy the condition.
+        mode: The mode of the condition. If it is 'all', the job is executed
+            after all other jobs are done/failed/cancelled. If it is 'any',
+            the job is executed after any other job is done/failed/cancelled.
+    """
 
     job_ids: T.List[str]
     statuses: T.Iterable[JobStatusType] = ("done", "failed", "cancelled")
@@ -65,7 +78,11 @@ class AfterOthers(Condition):
 
 @dataclass
 class AfterTimepoint(Condition):
-    """Condition that the job is executed after a timepoint."""
+    """Condition that the job is executed after a timepoint.
+
+    Attributes:
+        timepoint: The timepoint.
+    """
 
     timepoint: datetime
 
@@ -79,14 +96,24 @@ class AfterTimepoint(Condition):
 
 @dataclass
 class Combination(Condition):
-    """Base class for combination of conditions."""
+    """Base class for combination of conditions.
+
+    Attributes:
+        conditions: The sub-conditions.
+    """
     conditions: T.List[Condition]
 
 
 @dataclass
 class AllSatisfied(Combination):
     """Condition that the job is executed after all
-    sub-conditions are satisfied."""
+    sub-conditions are satisfied.
+
+    Attributes:
+        conditions: The sub-conditions.
+    """
+
+    conditions: T.List[Condition]
 
     def satisfy(self, engine):
         """Check if the condition is satisfied."""
@@ -96,7 +123,13 @@ class AllSatisfied(Combination):
 @dataclass
 class AnySatisfied(Combination):
     """Condition that the job is executed after any
-    sub-condition is satisfied."""
+    sub-condition is satisfied.
+
+    Attributes:
+        conditions: The sub-conditions.
+    """
+
+    conditions: T.List[Condition]
 
     def satisfy(self, engine):
         """Check if the condition is satisfied."""

@@ -2,6 +2,8 @@ import asyncio
 
 from executor.engine.core import Engine, EngineSetting
 from executor.engine.job.extend.subprocess import SubprocessJob
+from executor.engine.job import ProcessJob, LocalJob
+from executor.engine.job.dask import DaskJob
 from executor.engine.job.condition import AfterAnother
 
 
@@ -97,3 +99,17 @@ def test_repr():
         condition=AfterAnother(job_id=job.id)
     )
     assert repr(job1.condition) in repr(job1)
+
+
+def test_based_on_other_type():
+    engine = Engine()
+
+    with engine:
+        for base_class in [ProcessJob, DaskJob, LocalJob]:
+            job = SubprocessJob(
+                "python -c 'print(1 + 1)'",
+                base_class=base_class)
+            engine.submit(job)
+            engine.wait_job(job)
+            assert job.status == "done"
+            assert job.result() == 0

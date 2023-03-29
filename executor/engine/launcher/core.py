@@ -4,9 +4,11 @@ import functools
 from copy import copy
 
 from funcdesc import parse_func
+from cmd2func.core import Cmd2Func
 
 from ..core import Engine
 from ..job import Job, LocalJob, ThreadJob, ProcessJob
+from ..job.extend import SubprocessJob
 
 
 job_type_classes: T.Dict[str, T.Type[Job]] = {
@@ -16,7 +18,7 @@ job_type_classes: T.Dict[str, T.Type[Job]] = {
 }
 
 
-JOB_TYPES = T.Literal['local', 'thread', 'process']
+JOB_TYPES = T.Literal['local', 'thread', 'process', 'subprocess']
 
 
 _engine: T.Optional[Engine] = None
@@ -38,7 +40,7 @@ def set_default_engine(engine: Engine):
 
 class LauncherBase(object):
     def __init__(
-            self, target_func: T.Callable,
+            self, target_func: T.Union[T.Callable, Cmd2Func],
             engine: T.Optional['Engine'] = None,
             job_type: JOB_TYPES = 'process',
             name: T.Optional[str] = None,
@@ -49,9 +51,12 @@ class LauncherBase(object):
         self.target_func = target_func
         self.__signature__ = inspect.signature(target_func)
         self.job_type = job_type
+        if isinstance(target_func, Cmd2Func):
+            self.job_type = 'subprocess'
         self.desc = parse_func(target_func)
         self.name = name or target_func.__name__
         self.description = description or self.target_func.__doc__
+        functools.update_wrapper(self, target_func)
         self.tags = tags or []
         self.job_attrs = job_attrs
 
@@ -67,13 +72,21 @@ class LauncherBase(object):
 
     def create_job(self, args, kwargs, **attrs) -> 'Job':
         """Create a job from the launcher."""
-        job_class = job_type_classes[self.job_type]
         job_attrs = copy(self.job_attrs)
         job_attrs.update(attrs)
-        job = job_class(
-            self.target_func, args, kwargs,
-            **job_attrs
-        )
+        if isinstance(self.target_func, Cmd2Func):
+            cmd_or_gen = self.target_func.get_cmd_str(*args, **kwargs)
+            if isinstance(cmd_or_gen, str):
+                cmd = cmd_or_gen
+            else:
+                cmd = next(cmd_or_gen)
+            job = SubprocessJob(cmd, **job_attrs)
+        else:
+            job_class = job_type_classes[self.job_type]
+            job = job_class(
+                self.target_func, args, kwargs,
+                **job_attrs
+            )
         return job
 
     @staticmethod
@@ -140,7 +153,7 @@ class AsyncLauncher(LauncherBase):
 
 
 def launcher(
-        func: T.Optional[T.Callable] = None,
+        func: T.Optional[T.Union[T.Callable, Cmd2Func]] = None,
         engine: T.Optional['Engine'] = None,
         async_mode: bool = False,
         job_type: JOB_TYPES = 'process',
@@ -151,7 +164,10 @@ def launcher(
     """Create a launcher for a function.
 
     Args:
-        func: The function to be launched.
+        func: The function to be launched. If the function is instance of
+            [Cmd2Func](https://github.com/Nanguage/cmd2func),
+            the launcher will be in subprocess mode,
+            will launch `SubprocessJob` on each submit.
         engine: The engine to use. If not specified, the default engine
             will be used.
         async_mode: If True, the launcher will be AsyncLauncher.

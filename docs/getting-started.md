@@ -455,6 +455,30 @@ async def main():
 asyncio.run(main())
 ```
 
+### 💻 Command line launcher
+
+The `launcher` can accept a `cmd2func` 
+instance(see [cmd2func](https://github.com/Nanguage/cmd2func) documentation for more details).
+In this way, the launcher will launch the `SubprocessJob`
+when submitting the job.
+
+```python
+from cmd2func import cmd2func
+from executor.engine.launcher import launcher
+from executor.engine import Engine
+
+@launcher
+@cmd2func
+def cmd_add(a, b):
+    return f"python -c 'print({a} + {b})'"
+
+with Engine() as engine:
+    job = cmd_add.submit(1, 2)
+    engine.wait_job(job)
+    # will print 3 in the console
+    print(job.result()) # 0: the return code of the command
+```
+
 ## 📜 Logging settings
 
 Executor engine use `loguru` as the default logger.

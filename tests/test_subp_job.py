@@ -113,3 +113,24 @@ def test_based_on_other_type():
             engine.wait_job(job)
             assert job.status == "done"
             assert job.result() == 0
+
+
+def test_target_dir():
+    engine = Engine()
+
+    async def submit_job():
+        job1 = SubprocessJob(
+            "python -c 'print(1 + 1)'",
+            target_dir="$cache_dir")
+        await engine.submit_async(job1)
+        job2 = SubprocessJob(
+            "python -c 'print(1 + 1)'",
+            target_dir=f"{job1.cache_dir}")
+        await engine.submit_async(job2)
+        await engine.join()
+        assert job1.status == "done"
+        assert job2.status == "done"
+        assert job1.result() == 0
+        assert job2.result() == 0
+
+    asyncio.run(submit_job())

@@ -5,6 +5,7 @@ import pytest
 
 from executor.engine.launcher import launcher
 from executor.engine import Engine
+from cmd2func import cmd2func
 
 
 def test_sync_launcher():
@@ -102,3 +103,22 @@ def test_sync_async_convert():
     assert add_sync.async_mode is False
     add_async = add_sync.to_async()
     assert add_async.async_mode is True
+
+
+def test_cmd2func_launcher():
+    @launcher
+    @cmd2func
+    def add(a, b):
+        return f"python -c 'print({a} + {b})'"
+
+    @launcher
+    @cmd2func
+    def add2(a, b):
+        yield f"python -c 'print({a} + {b})'"
+
+    with Engine() as engine:
+        job = add.submit(1, 2)
+        job2 = add2.submit(1, 2)
+        engine.wait()
+        assert job.result() == 0
+        assert job2.result() == 0

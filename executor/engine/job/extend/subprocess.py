@@ -65,7 +65,7 @@ def SubprocessJob(
             nonlocal name
             if name is None:
                 name = cmd.split()[0]
-            self.target_dir = self.resolve_target_dir(target_dir)
+            self.target_dir = target_dir
             attrs.update({
                 'cmd': cmd,
                 'target_dir': target_dir,
@@ -89,12 +89,17 @@ def SubprocessJob(
             elif target_dir == "$current_dir":
                 return Path.cwd().resolve().as_posix()
             else:
-                return target_dir
+                return Path(target_dir).resolve().as_posix()
 
         def process_func(self):
             cmd = copy.copy(self.cmd)
             record_cmd = copy.copy(self.record_cmd)
-            target_dir = copy.copy(self.target_dir)
+            target_dir = self.resolve_target_dir(self.target_dir)
+            self.attrs.update({
+                'target_dir': target_dir,
+            })
+            self.target_dir = target_dir
+
             cache_dir = self.cache_dir.resolve()
             path_sh = cache_dir / 'command.sh'
 

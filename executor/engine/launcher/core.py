@@ -75,10 +75,12 @@ class LauncherBase(object):
         """Get the engine of the launcher."""
         if self._engine is None:
             self._engine = get_default_engine()
-            if (self._engine._loop_thread is None) or \
-               (not self._engine._loop_thread.is_alive()):
-                self._engine.start()
         return self._engine
+
+    @engine.setter
+    def engine(self, engine: Engine):
+        """Set the engine of the launcher."""
+        self._engine = engine
 
     def create_job(self, args, kwargs, **attrs) -> 'Job':
         """Create a job from the launcher."""
@@ -132,7 +134,7 @@ class SyncLauncher(LauncherBase):
     def to_async(self) -> "AsyncLauncher":
         """Convert the launcher to async mode."""
         return AsyncLauncher(
-            self.target_func, self.engine, self.job_type,
+            self.target_func, self._engine, self.job_type,
             self.name, self.description, self.tags, **self.job_attrs,
         )
 
@@ -158,7 +160,7 @@ class AsyncLauncher(LauncherBase):
     def to_sync(self) -> "SyncLauncher":
         """Convert the launcher to sync mode."""
         return SyncLauncher(
-            self.target_func, self.engine, self.job_type,
+            self.target_func, self._engine, self.job_type,
             self.name, self.description, self.tags, **self.job_attrs,
         )
 

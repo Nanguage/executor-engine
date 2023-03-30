@@ -168,6 +168,12 @@ class Engine(ExecutorObj):
 
     def submit(self, *jobs: Job):
         """Submit job to engine"""
+        if (self._loop_thread is None) or\
+           (not self._loop_thread.is_alive()):
+            raise RuntimeError(
+                f"Event loop thread of {self} is not running."
+                " Please use engine as context manager or call engine.start()."
+            )
         fut = asyncio.run_coroutine_threadsafe(
             self.submit_async(*jobs), self.loop)
         fut.result()

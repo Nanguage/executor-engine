@@ -3,6 +3,8 @@ import typing as T
 import shutil
 import asyncio
 
+import pytest
+
 from executor.engine.core import Engine, EngineSetting
 from executor.engine.job import LocalJob, ThreadJob, ProcessJob, Job
 from executor.engine.job.condition import AfterAnother, AnySatisfied
@@ -286,3 +288,10 @@ def test_wait_timeout():
         t2 = time.time()
         assert (t2 - t) < 2.0
         engine.cancel_all()
+
+
+def test_corner_case():
+    job = ProcessJob(lambda x: x**2, (2,))
+    engine = Engine()
+    with pytest.raises(RuntimeError):
+        engine.submit(job)

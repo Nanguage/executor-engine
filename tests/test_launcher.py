@@ -3,7 +3,9 @@ import asyncio
 
 import pytest
 
-from executor.engine.launcher import launcher
+from executor.engine.launcher import (
+    launcher, get_default_engine
+)
 from executor.engine import Engine
 from cmd2func import cmd2func
 
@@ -137,3 +139,14 @@ def test_webapp_launcher():
         time.sleep(2)
         assert job.status == 'running'
         engine.cancel(job)
+
+
+def test_set_get_engine():
+    @launcher
+    def add(a, b):
+        return a + b
+
+    assert add.engine is get_default_engine()
+    engine = Engine()
+    add.engine = engine
+    assert add.engine is engine

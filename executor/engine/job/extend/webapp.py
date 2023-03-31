@@ -51,7 +51,7 @@ def WebappJob(
         redirect_out_err: Whether to redirect stdout and stderr to files.
         **attrs: Other attributes of the job.
     """
-    class _WebAppJob(base_class):  # type: ignore
+    class _WebappJob(base_class):  # type: ignore
         ip: str
         port: T.Optional[int]
 
@@ -68,7 +68,7 @@ def WebappJob(
             self.ip = ip
             if ip not in ("127.0.0.1", "localhost", "0.0.0.0"):
                 raise NotImplementedError(
-                    "WebAppJob now only support launch in local mechine.")
+                    "WebappJob now only support launch in local mechine.")
             self.port = port
             self.check_web_launcher(web_launcher)
             self.web_launcher = web_launcher
@@ -162,4 +162,4 @@ def WebappJob(
 
             self.func = func
             super().process_func()
-    return _WebAppJob()
+    return _WebappJob()

@@ -1,5 +1,6 @@
 import time
 import asyncio
+from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 import pytest
 
@@ -128,7 +129,21 @@ def test_cmd2func_launcher():
         assert job2.result() == 0
 
 
-def test_webapp_launcher():
+def test_webapp_launcer():
+    @launcher(job_type="webapp")
+    def simple_httpd(ip, port):
+        server_addr = (ip, port)
+        httpd = HTTPServer(server_addr, SimpleHTTPRequestHandler)
+        httpd.serve_forever()
+
+    with Engine() as engine:
+        job = simple_httpd.submit('127.0.0.1', None)
+        time.sleep(2)
+        assert job.status == 'running'
+        engine.cancel(job)
+
+
+def test_cmd_webapp_launcher():
     @launcher(job_type='webapp')
     @cmd2func
     def simple_webapp():

@@ -82,7 +82,7 @@ class LauncherBase(object):
         """Set the engine of the launcher."""
         self._engine = engine
 
-    def create_job(self, args, kwargs, **attrs) -> 'Job':
+    def create_job(self, args: tuple, kwargs: dict, **attrs) -> 'Job':
         """Create a job from the launcher."""
         job_attrs = copy(self.job_attrs)
         job_attrs.update(attrs)
@@ -96,10 +96,15 @@ class LauncherBase(object):
                 cmd = next(cmd_or_gen)
             job = job_class(cmd, **job_attrs)  # type: ignore
         else:
-            job = job_class(
-                self.target_func, args, kwargs,
-                **job_attrs
-            )
+            if job_class is WebappJob:
+                kwargs = copy(kwargs)
+                kwargs.update(job_attrs)
+                job = job_class(self.target_func, *args, **kwargs)
+            else:
+                job = job_class(
+                    self.target_func, args, kwargs,
+                    **job_attrs
+                )
         return job
 
     @staticmethod

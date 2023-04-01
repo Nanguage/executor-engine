@@ -17,8 +17,13 @@ class Tee(object):
         self.stream.write(data)
         self.file.write(data)
 
+    def flush(self):
+        self.stream.flush()
+        self.file.flush()
+
     def __enter__(self):
         setattr(sys, self.stream_type, self)
+        return self
 
     def __exit__(self, _type, _value, _traceback):
         setattr(sys, self.stream_type, self.stream)

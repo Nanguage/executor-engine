@@ -1,5 +1,7 @@
 import subprocess as subp
 import time
+import sys
+import io
 
 from executor.engine.utils import (
     CheckAttrRange,
@@ -9,6 +11,7 @@ from executor.engine.utils import (
     get_event_loop, event_loop,
     get_callable_name
 )
+from executor.engine.middle.capture import Tee
 
 import pytest
 
@@ -90,3 +93,12 @@ def test_get_callable_name():
             self.func = func
 
     assert get_callable_name(B(a)) == "a"
+
+
+def test_tee():
+    out = io.StringIO()
+    with Tee(out, 'stdout') as tee:
+        assert sys.stdout is tee
+        tee.write("hello\n")
+        tee.flush()
+    assert out.getvalue().strip() == "hello"

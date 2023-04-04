@@ -198,8 +198,9 @@ def launcher(
     if func is None:
         return functools.partial(
             launcher, engine=engine, async_mode=async_mode,
-            job_type=job_type,
-            name=name, tags=tags,
+            job_type=job_type, name=name,
+            description=description, tags=tags,
+            **job_attrs
         )
 
     launcher_cls: T.Union[T.Type[AsyncLauncher], T.Type[SyncLauncher]]

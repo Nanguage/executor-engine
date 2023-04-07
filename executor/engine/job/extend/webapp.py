@@ -104,9 +104,9 @@ def WebappJob(
             if super().consume_resource():
                 if self.port is None:
                     self.port = PortManager.get_port()
-                    self.attrs.update({"address": f"{self.ip}:{self.port}"})
                 else:
                     PortManager.consume_port(self.port)
+                self.attrs.update({"address": f"{self.ip}:{self.port}"})
                 return True
             else:  # pragma: no cover
                 return False

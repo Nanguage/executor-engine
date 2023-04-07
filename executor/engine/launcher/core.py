@@ -55,7 +55,7 @@ class LauncherBase(object):
             name: T.Optional[str] = None,
             description: T.Optional[str] = None,
             tags: T.Optional[T.List[str]] = None,
-            **job_attrs):
+            job_attrs: T.Optional[dict] = None,):
         self._engine = engine
         self.target_func = target_func
         self.__signature__ = inspect.signature(target_func)
@@ -68,7 +68,11 @@ class LauncherBase(object):
         self.description = description or self.target_func.__doc__
         functools.update_wrapper(self, target_func)
         self.tags = tags or []
+        job_attrs = job_attrs or {}
         self.job_attrs = job_attrs
+        self.job_attrs.update({
+            'name': self.name,
+        })
 
     @property
     def engine(self) -> Engine:
@@ -140,7 +144,8 @@ class SyncLauncher(LauncherBase):
         """Convert the launcher to async mode."""
         return AsyncLauncher(
             self.target_func, self._engine, self.job_type,
-            self.name, self.description, self.tags, **self.job_attrs,
+            self.name, self.description, self.tags,
+            job_attrs=self.job_attrs,
         )
 
 
@@ -166,7 +171,8 @@ class AsyncLauncher(LauncherBase):
         """Convert the launcher to sync mode."""
         return SyncLauncher(
             self.target_func, self._engine, self.job_type,
-            self.name, self.description, self.tags, **self.job_attrs,
+            self.name, self.description, self.tags,
+            job_attrs=self.job_attrs,
         )
 
 
@@ -178,7 +184,7 @@ def launcher(
         name: T.Optional[str] = None,
         description: T.Optional[str] = None,
         tags: T.Optional[T.List[str]] = None,
-        **job_attrs: T.Dict):
+        job_attrs: T.Optional[dict] = None):
     """Create a launcher for a function.
 
     Args:
@@ -200,7 +206,7 @@ def launcher(
             launcher, engine=engine, async_mode=async_mode,
             job_type=job_type, name=name,
             description=description, tags=tags,
-            **job_attrs
+            job_attrs=job_attrs
         )
 
     launcher_cls: T.Union[T.Type[AsyncLauncher], T.Type[SyncLauncher]]
@@ -211,5 +217,5 @@ def launcher(
 
     return launcher_cls(
         func, engine, job_type,
-        name, description, tags, **job_attrs,
+        name, description, tags, job_attrs,
     )

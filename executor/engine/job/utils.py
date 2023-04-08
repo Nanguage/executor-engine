@@ -9,7 +9,8 @@ if T.TYPE_CHECKING:
 
 
 JobStatusType = T.Literal['pending', 'running', 'failed', 'done', 'cancelled']
-valid_job_statuses = JobStatusType.__args__  # type: ignore
+valid_job_statuses: T.List[JobStatusType] = [
+    'pending', 'running', 'failed', 'done', 'cancelled']
 
 
 class JobStatusAttr(CheckAttrRange):
@@ -27,9 +28,9 @@ class JobStatusAttr(CheckAttrRange):
             obj.stoped_time = datetime.now()
 
 
-class JobEmitError(ExecutorError):
-    pass
-
-
 class InvalidStateError(ExecutorError):
-    pass
+    def __init__(self, job: "Job", valid_status: T.List[JobStatusType]):
+        self.valid_status = valid_status
+        super().__init__(
+            f"Invalid state: {job} is in {job.status} state, "
+            f"but should be in {valid_status} state.")

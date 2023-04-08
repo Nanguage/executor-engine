@@ -5,7 +5,7 @@ import pytest
 
 from executor.engine.core import Engine, EngineSetting
 from executor.engine.job import LocalJob, ThreadJob, ProcessJob
-from executor.engine.job.base import JobEmitError, InvalidStateError
+from executor.engine.job.base import InvalidStateError
 from executor.engine.job.condition import AfterAnother, AllSatisfied
 
 
@@ -28,13 +28,13 @@ def test_corner_cases():
     assert job.cache_dir is None
 
     async def submit_job():
-        with pytest.raises(JobEmitError):
+        with pytest.raises(InvalidStateError):
             await job.emit()
 
     asyncio.run(submit_job())
 
     async def submit_job():
-        with pytest.raises(JobEmitError):
+        with pytest.raises(InvalidStateError):
             await job.rerun()
 
     asyncio.run(submit_job())

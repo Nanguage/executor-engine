@@ -8,8 +8,8 @@ import itertools
 import cloudpickle
 
 from .utils import (
-    JobStatusAttr, JobEmitError, InvalidStateError, JobStatusType,
-    ExecutorError,
+    JobStatusAttr, InvalidStateError, JobStatusType,
+    ExecutorError, valid_job_statuses
 )
 from .condition import Condition, AfterOthers, AllSatisfied
 from ..middle.capture import CaptureOut
@@ -240,8 +240,7 @@ class Job(ExecutorObj):
         """Emit the job to the engine."""
         logger.info(f"Emit job {self}, watting for run.")
         if self.status != 'pending':
-            raise JobEmitError(
-                f"{self} is not in valid status(pending)")
+            raise InvalidStateError(self, ['pending'])
         self.resolve_dependencies()
         self.submit_time = datetime.now()
         loop = asyncio.get_running_loop()
@@ -289,10 +288,9 @@ class Job(ExecutorObj):
 
     async def rerun(self, check_status: bool = True):
         """Rerun the job."""
-        _valid_status = ("cancelled", "done", "failed")
+        _valid_status: T.List[JobStatusType] = ["cancelled", "done", "failed"]
         if check_status and (self.status not in _valid_status):
-            raise JobEmitError(
-                f"{self} is not in valid status({_valid_status})")
+            raise InvalidStateError(self, _valid_status)
         logger.info(f"Rerun job {self}")
         self.status = "pending"
         await self.emit()
@@ -347,7 +345,7 @@ class Job(ExecutorObj):
     def result(self) -> T.Any:
         """Get the result of the job."""
         if self.status != "done":
-            raise InvalidStateError(f"{self} is not done.")
+            raise InvalidStateError(self, ['done'])
         return self.future.result()
 
     def exception(self):
@@ -372,7 +370,7 @@ class Job(ExecutorObj):
     async def join(self, timeout: T.Optional[float] = None):
         """Wait for the job done."""
         if self.task is None:
-            raise InvalidStateError(f"{self} is not emitted.")
+            raise InvalidStateError(self, valid_job_statuses)
         await asyncio.wait([self.task], timeout=timeout)
 
     @property

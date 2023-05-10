@@ -24,8 +24,15 @@ job_type_classes: T.Dict[str, Job_or_ExtJob] = {
 }
 
 
+try:
+    from ..job.dask import DaskJob
+    job_type_classes['dask'] = DaskJob
+except ImportError:
+    pass
+
+
 JOB_TYPES = T.Literal[
-    'local', 'thread', 'process',
+    'local', 'thread', 'process', 'dask',
     'subprocess', 'webapp'
 ]
 

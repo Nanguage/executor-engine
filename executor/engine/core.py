@@ -270,7 +270,8 @@ class Engine(ExecutorObj):
             asyncio.create_task(job.join())
             for job in (running + pending)
         ]
-        await asyncio.wait(tasks, timeout=timeout)
+        if len(tasks) > 0:
+            await asyncio.wait(tasks, timeout=timeout)
 
     def get_cache_dir(self) -> Path:
         """Get cache directory for engine."""

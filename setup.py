@@ -57,7 +57,7 @@ def get_doc_requires():
     return get_requirements_from_file('docs/requirements.txt')
 
 
-requires_test = ['pytest', 'pytest-cov', 'flake8', 'mypy']
+requires_test = ['pytest', 'pytest-cov', 'pytest-asyncio', 'flake8', 'mypy']
 packages_for_dev = ["pip", "setuptools", "wheel", "twine", "ipdb"]
 
 requires_dev = packages_for_dev + requires_test + get_doc_requires()

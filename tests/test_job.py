@@ -138,3 +138,32 @@ def test_upstream_cancel():
         engine.wait()
         assert job1.status == "cancelled"
         assert job2.status == "cancelled"
+
+
+@pytest.mark.asyncio
+async def test_async_callback():
+    def add(a, b):
+        return a + b
+
+    async def callback(res):
+        assert res == 3
+
+    with Engine() as engine:
+        job1 = ProcessJob(add, (1, 2), callback=callback)
+        await engine.submit_async(job1)
+        await job1.join()
+
+
+@pytest.mark.asyncio
+async def test_async_err_callback():
+    def raise_err():
+        raise ValueError("test")
+
+    async def err_callback(e):
+        print(e)
+
+    setting = EngineSetting(print_traceback=False)
+    with Engine(setting) as engine:
+        job1 = ProcessJob(raise_err, error_callback=err_callback)
+        await engine.submit_async(job1)
+        await job1.join()

@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import typing as T
 from datetime import datetime
 from pathlib import Path
@@ -304,7 +305,10 @@ class Job(ExecutorObj):
         logger.info(f"Job {self} done.")
         self.future.set_result(res)
         for callback in self.future.done_callbacks:
-            callback(res)
+            if inspect.iscoroutinefunction(callback):
+                await callback(res)
+            else:
+                callback(res)
         self._on_finish("done")
 
     async def on_failed(self, e: Exception):
@@ -315,7 +319,10 @@ class Job(ExecutorObj):
             logger.exception(e)
         self.future.set_exception(e)
         for err_callback in self.future.error_callbacks:
-            err_callback(e)
+            if inspect.iscoroutinefunction(err_callback):
+                await err_callback(e)
+            else:
+                err_callback(e)
         if self.retry_remain > 0:
             self._on_finish("pending")
             self.retry_remain -= 1

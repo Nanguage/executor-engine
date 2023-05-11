@@ -1,7 +1,6 @@
 import time
 import typing as T
 import shutil
-import asyncio
 
 import pytest
 
@@ -249,19 +248,21 @@ def test_engine_get_cache_dir():
     shutil.rmtree(setting.cache_path)
 
 
-def test_async_api():
+@pytest.mark.asyncio
+async def test_async_api():
     engine = Engine()
-
-    async def main():
-        engine.loop = asyncio.get_running_loop()
-        job1 = ThreadJob(lambda x: x**2, (2,))
-        job2 = ThreadJob(lambda x: x**2, (2,))
-        await engine.submit_async(job1, job2)
-        await engine.join()
-        assert job1.status == "done"
-        assert job2.result() == 4
-
-    asyncio.run(main())
+    job1 = ThreadJob(lambda x: x**2, (2,))
+    job2 = ThreadJob(lambda x: x**2, (2,))
+    await engine.submit_async(job1, job2)
+    await engine.join()
+    assert job1.status == "done"
+    assert job2.result() == 4
+    job3 = ThreadJob(lambda x: x**2, (2,))
+    job4 = ThreadJob(lambda x: x**2, (2,))
+    await engine.submit_async(job3, job4)
+    await engine.wait_async()
+    assert job3.status == "done"
+    assert job4.result() == 4
 
 
 def test_engine_start_stop():

@@ -262,8 +262,23 @@ class Engine(ExecutorObj):
             time.sleep(time_delta)
             total_time -= time_delta
 
+    async def wait_async(
+            self,
+            timeout: T.Optional[float] = None,
+            time_delta: float = 0.2):
+        """Asynchronous interface for wait."""
+        total_time = timeout if timeout is not None else float('inf')
+        while True:
+            n_wait_jobs = len(self.jobs.running) + len(self.jobs.pending)
+            if n_wait_jobs == 0:
+                break
+            if total_time <= 0:
+                break
+            await asyncio.sleep(time_delta)
+            total_time -= time_delta
+
     async def join(self, timeout: T.Optional[float] = None):
-        """Asynchronous interface for wait all jobs."""
+        """Join all running and pending jobs."""
         running = self.jobs.running.values()
         pending = self.jobs.pending.values()
         tasks = [

@@ -1,6 +1,7 @@
 import time
 import typing as T
 import shutil
+import asyncio
 
 import pytest
 
@@ -257,12 +258,15 @@ async def test_async_api():
     await engine.join()
     assert job1.status == "done"
     assert job2.result() == 4
-    job3 = ThreadJob(lambda x: x**2, (2,))
-    job4 = ThreadJob(lambda x: x**2, (2,))
-    await engine.submit_async(job3, job4)
-    await engine.wait_async()
-    assert job3.status == "done"
-    assert job4.result() == 4
+
+    def sleep_5s():
+        time.sleep(5)
+
+    job5 = ProcessJob(sleep_5s)
+    await engine.submit_async(job5)
+    await engine.wait_async(timeout=1.0)
+    assert job5.status == "running"
+    await engine.cancel_all_async()
 
 
 def test_engine_start_stop():
@@ -296,3 +300,4 @@ def test_corner_case():
     engine = Engine()
     with pytest.raises(RuntimeError):
         engine.submit(job)
+    engine.loop = asyncio.new_event_loop()

@@ -245,16 +245,23 @@ class Engine(ExecutorObj):
     def wait(
             self,
             timeout: T.Optional[float] = None,
-            time_delta: float = 0.2):
+            time_delta: float = 0.2,
+            select_jobs: T.Optional[T.Callable[[Jobs], T.List[Job]]] = None,
+            ):
         """Block until all jobs are finished or timeout.
 
         Args:
             timeout: Timeout in seconds.
             time_delta: Time interval to check job status.
+            select_jobs: Function to select jobs to wait.
         """
+        if select_jobs is None:
+            select_jobs = (
+                lambda jobs: jobs.running.values() + jobs.pending.values()
+            )
         total_time = timeout if timeout is not None else float('inf')
         while True:
-            n_wait_jobs = len(self.jobs.running) + len(self.jobs.pending)
+            n_wait_jobs = len(select_jobs(self.jobs))
             if n_wait_jobs == 0:
                 break
             if total_time <= 0:
@@ -265,11 +272,24 @@ class Engine(ExecutorObj):
     async def wait_async(
             self,
             timeout: T.Optional[float] = None,
-            time_delta: float = 0.2):
-        """Asynchronous interface for wait."""
+            time_delta: float = 0.2,
+            select_jobs: T.Optional[T.Callable[[Jobs], T.List[Job]]] = None,
+            ):
+        """Asynchronous interface for wait.
+        Block until all jobs are finished or timeout.
+
+        Args:
+            timeout: Timeout in seconds.
+            time_delta: Time interval to check job status.
+            select_jobs: Function to select jobs to wait.
+        """
+        if select_jobs is None:
+            select_jobs = (
+                lambda jobs: jobs.running.values() + jobs.pending.values()
+            )
         total_time = timeout if timeout is not None else float('inf')
         while True:
-            n_wait_jobs = len(self.jobs.running) + len(self.jobs.pending)
+            n_wait_jobs = len(select_jobs(self.jobs))
             if n_wait_jobs == 0:
                 break
             if total_time <= 0:

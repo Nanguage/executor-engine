@@ -280,6 +280,31 @@ async def test_join_jobs():
     assert job2.result() == 9
 
 
+@pytest.mark.asyncio
+async def test_wait_jobs():
+    def sleep_square(x):
+        time.sleep(x)
+        return x**2
+    engine = Engine()
+    job1 = ThreadJob(sleep_square, (1,))
+    job2 = ThreadJob(sleep_square, (2,))
+    job3 = ThreadJob(sleep_square, (3,))
+    await engine.submit_async(job1, job2, job3)
+
+    def select_func(jobs):
+        if (job1.status == "running") or (job1.status == "pending"):
+            return [job1]
+        else:
+            return []
+    await engine.wait_async(
+        select_jobs=select_func
+    )
+    assert job1.status == "done"
+    assert job2.status == "running"
+    assert job3.status == "running"
+    await engine.wait_async()
+
+
 def test_engine_start_stop():
     engine = Engine()
     engine.start()

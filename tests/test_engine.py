@@ -269,6 +269,17 @@ async def test_async_api():
     await engine.cancel_all_async()
 
 
+@pytest.mark.asyncio
+async def test_join_jobs():
+    engine = Engine()
+    job1 = ThreadJob(lambda x: x**2, (2,))
+    job2 = ThreadJob(lambda x: x**2, (3,))
+    await engine.submit_async(job1, job2)
+    await engine.join(jobs=[job1, job2])
+    assert job1.status == "done"
+    assert job2.result() == 9
+
+
 def test_engine_start_stop():
     engine = Engine()
     engine.start()

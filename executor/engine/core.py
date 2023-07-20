@@ -277,13 +277,21 @@ class Engine(ExecutorObj):
             await asyncio.sleep(time_delta)
             total_time -= time_delta
 
-    async def join(self, timeout: T.Optional[float] = None):
+    async def join(
+            self,
+            jobs: T.Optional[T.List[Job]] = None,
+            timeout: T.Optional[float] = None):
         """Join all running and pending jobs."""
-        running = self.jobs.running.values()
-        pending = self.jobs.pending.values()
+        if jobs is None:
+            jobs_for_join = (
+                self.jobs.running.values() +
+                self.jobs.pending.values()
+            )
+        else:
+            jobs_for_join = jobs
         tasks = [
             asyncio.create_task(job.join())
-            for job in (running + pending)
+            for job in jobs_for_join
         ]
         if len(tasks) > 0:
             await asyncio.wait(tasks, timeout=timeout)

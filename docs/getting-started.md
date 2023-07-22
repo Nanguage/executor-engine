@@ -1,6 +1,6 @@
 # Getting Started
 
-## 📦 Installation
+## Installation
 
 ```bash
 pip install executor-engine
@@ -12,7 +12,7 @@ With dask support:
 pip install "executor-engine[dask]"
 ```
 
-## 📚 Basic usage
+## Basic usage
 
 `Engine` is the core object of executor-engine. It manages the job execution.
 You can create an `Engine` object and submit jobs to it, then wait for the jobs to finish:
@@ -57,11 +57,11 @@ asyncio.run(main())
 # or just `await main()` in jupyter environment
 ```
 
-## 🔄 Job
+## Job
 
 Job is the basic unit of executor-engine. It represents a task to be executed.
 
-### 🚦 Job status
+### Job status
 
 Job has 6 status: `created`, `pending`, `running`, `done`, `failed`, `cancelled`.
 
@@ -80,7 +80,7 @@ graph LR
     cancelled -->|rerun| pending
 ```
 
-### 🧩 Job types
+### Job types
 
 Executor engine provides 4 builtin job types: [`LocalJob`](api-reference/job.md#executor.engine.job.local.LocalJob), 
 [`ThreadJob`](api-reference/job.md#executor.engine.job.thread.ThreadJob), 
@@ -96,7 +96,7 @@ They are executed by different backends and suitable for different scenarios.
 | `ProcessJob` | `executor.engine.backend.process` | CPU-bound tasks |
 | `DaskJob` | `executor.engine.backend.dask` | Distributed tasks |
 
-### 🧰 Extend job types
+### Extend job types
 
 There are two extend job types:
 [`SubprocessJob`](api-reference/extend_job.md#executor.engine.job.extend.SubprocessJob)
@@ -105,7 +105,7 @@ and
 . They are used to execute shell commands and launch web applications.
 The extend job types can based on the job types above(`LocalJob`, `ThreadJob`, `ProcessJob`, `DaskJob`).
 
-#### 🖥️ SubprocessJob
+#### SubprocessJob
 
 [`SubprocessJob`](api-reference/extend_job.md#executor.engine.job.extend.SubprocessJob)
 is a job type for executing shell commands.
@@ -125,7 +125,7 @@ with Engine() as engine:
 ```
 
 
-#### 🌐 WebappJob
+#### WebappJob
 
 [`WebappJob`](api-reference/extend_job.md#executor.engine.job.extend.WebappJob) 
 is a job type for launching a web application.
@@ -163,7 +163,7 @@ with Engine() as engine:
     engine.wait()
 ```
 
-### ❓ Conditional job execution
+### Conditional job execution
 
 After another job:
 
@@ -225,7 +225,7 @@ with Engine() as engine:
 
 See [Condition](api-reference/condition.md) for more details.
 
-#### 🔀 Condition combination
+#### Condition combination
 
 `AllSatisfied` is used to combine multiple conditions, all conditions must be satisfied to execute the job:
 
@@ -285,7 +285,7 @@ with Engine() as engine:
 ```
 
 
-#### 🎨 Custom condition
+#### Custom condition
 
 You can also define your own condition by inheriting `Condition` class:
 
@@ -319,7 +319,7 @@ with Engine() as engine:
     engine.wait()
 ```
 
-## 🚂 Engine
+## Engine
 
 `executor.engine` provides a `Engine` class for managing jobs.
 
@@ -360,7 +360,7 @@ with Engine() as engine:
 See the [API reference](api-reference/engine.md) for more details.
 
 
-### ⚙️ Engine setting
+### Engine setting
 
 You can set some engine settings by passing a
 [`EngineSetting`](api-reference/engine.md#executor.engine.core.EngineSetting)
@@ -392,7 +392,7 @@ with Engine(setting=EngineSetting(
 
 More settings are available, see the [API reference](api-reference/engine.md#executor.engine.core.EngineSetting) for more details.
 
-### 🗂️ Jobs manager
+### Jobs manager
 
 All jobs of an engine are managed by a [`Jobs`](api-reference/job_store.md#executor.engine.manager.Jobs) instance.
 It caches all jobs on disk, and provides some methods to select jobs by id, status, etc.
@@ -420,7 +420,7 @@ with Engine() as engine:
 See the [API reference](api-reference/job_store.md#executor.engine.manager.Jobs) for more details.
 
 
-## 🚀 Launcher API
+## Launcher API
 
 `executor.engine` provides a launcher API for launching jobs in more efficient way.
 
@@ -455,7 +455,7 @@ async def main():
 asyncio.run(main())
 ```
 
-### 💻 Command line launcher
+### Command line launcher
 
 The `launcher` can accept a `cmd2func` 
 instance(see [cmd2func](https://github.com/Nanguage/cmd2func) documentation for more details).
@@ -479,7 +479,7 @@ with Engine() as engine:
     print(job.result()) # 0: the return code of the command
 ```
 
-## 📜 Logging settings
+## Logging settings
 
 Executor engine use `loguru` as the default logger.
 You can configure the logger by importing `executor.engine.log.logger`:

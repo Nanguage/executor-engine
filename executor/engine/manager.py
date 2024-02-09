@@ -137,16 +137,19 @@ class Jobs:
     failed: JobStore
     cancelled: JobStore
 
-    def __init__(self, cache_path: Path):
+    def __init__(self, cache_path: T.Optional[Path] = None):
         self.cache_path = cache_path
         self._stores: T.Dict[str, JobStore] = {}
         s: str
         for s in self.valid_statuses:
-            path = cache_path / s
-            if path.exists():
-                store = JobStore.load_from_cache(path)
+            if cache_path is None:
+                store = JobStore(None)
             else:
-                store = JobStore(path)
+                path = cache_path / s
+                if path.exists():
+                    store = JobStore.load_from_cache(path)
+                else:
+                    store = JobStore(path)
             self._stores[s] = store
         self.set_attrs_for_read()
 

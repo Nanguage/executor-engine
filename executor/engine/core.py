@@ -28,6 +28,11 @@ class EngineSetting:
             if not set, no limit.
         max_jobs: Maximum number of jobs,
             if not set, no limit.
+        cache_type: Cache type, "diskcache" or "none".
+            If set to "diskcache", will use diskcache package
+            to cache job status and result.
+            If set to "none", the status and result of job
+            will only be stored in memory.
         cache_path: Cache path,
             if not set, will create a cache directory in
             .executor/{engine.id}.
@@ -37,6 +42,7 @@ class EngineSetting:
     max_process_jobs: T.Optional[int] = None
     max_dask_jobs: T.Optional[int] = None
     max_jobs: T.Optional[int] = 20
+    cache_type: T.Literal["diskcache", "none"] = "none"
     cache_path: T.Optional[str] = None
     print_traceback: bool = True
 
@@ -82,7 +88,10 @@ class Engine(ExecutorObj):
         self.print_traceback = False
         self.setup_by_setting()
         if jobs is None:
-            jobs = Jobs(self.cache_dir / "jobs")
+            if self.setting.cache_type == "diskcache":
+                jobs = Jobs(self.cache_dir / "jobs")
+            else:
+                jobs = Jobs()
         self.jobs: Jobs = jobs
         self._dask_client: T.Optional["Client"] = None
         self._loop = loop

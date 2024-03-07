@@ -1,5 +1,4 @@
 import copy
-import shlex
 import typing as T
 import subprocess as subp
 from pathlib import Path
@@ -23,6 +22,7 @@ def SubprocessJob(
     wait_time_delta: float = 0.01,
     redirect_out_err: bool = False,
     target_dir: str = "$current_dir",
+    popen_kwargs: T.Optional[T.Dict[str, T.Any]] = None,
     **attrs
 ):
     """Create a job that runs a subprocess.
@@ -43,6 +43,7 @@ def SubprocessJob(
             Use '$cache_dir' to represent the cache directory of the job.
             Use '$current_dir' to represent the current directory of the job.
             Default is '$current_dir'.
+        popen_kwargs: The keyword arguments for subprocess.Popen.
         **attrs: Other attributes of the job.
     """
     class _SubprocessJob(base_class):  # type: ignore
@@ -107,21 +108,29 @@ def SubprocessJob(
                 with open(path_sh, 'w') as f:
                     f.write(cmd + "\n")
 
+            pkwargs = popen_kwargs or {}
+            pkwargs['cwd'] = target_dir
+
             if self.redirect_out_err:
                 path_stdout = cache_dir / 'stdout.txt'
                 path_stderr = cache_dir / 'stderr.txt'
 
                 def run_cmd():  # pragma: no cover
                     runner = ProcessRunner(cmd)
-                    runner.run(cwd=target_dir)
+                    runner.run(**pkwargs)
                     with open(path_stdout, 'w') as fo, \
                          open(path_stderr, 'w') as fe:
                         retcode = runner.write_stream_until_stop(fo, fe)
                     return retcode
             else:
                 def run_cmd():
-                    p = subp.Popen(shlex.split(cmd), cwd=target_dir)
-                    retcode = p.wait()
+                    runner = ProcessRunner(cmd)
+                    runner.run(
+                        capture_stdout=False,
+                        capture_stderr=False,
+                        **pkwargs
+                    )
+                    retcode = runner.proc.wait()
                     return retcode
 
             def func():

@@ -134,3 +134,23 @@ def test_target_dir():
         assert job2.result() == 0
 
     asyncio.run(submit_job())
+
+
+def test_passing_env():
+    engine = Engine()
+
+    async def submit_job():
+        import os
+        env = os.environ.copy()
+        env["A"] = "2"
+        job = SubprocessJob(
+            "python -c 'import os; print(os.getenv(\"A\"))'",
+            popen_kwargs={"env": env},
+            redirect_out_err=True
+        )
+        await engine.submit_async(job)
+        await job.join()
+        with open(job.cache_dir / 'stdout.txt') as f:
+            assert f.read().strip() == '2'
+
+    asyncio.run(submit_job())

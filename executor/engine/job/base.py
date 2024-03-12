@@ -380,6 +380,24 @@ class Job(ExecutorObj):
             raise InvalidStateError(self, valid_job_statuses)
         await asyncio.wait([self.task], timeout=timeout)
 
+    async def wait_until(
+        self, check_func: T.Callable[["Job"], bool],
+        timeout: T.Optional[float] = None
+    ):
+        """Wait until the check_func return True."""
+        total_time = 0
+        while not check_func(self):
+            await asyncio.sleep(self.wait_time_delta)
+            total_time += self.wait_time_delta
+            if (timeout is not None) and total_time > timeout:
+                raise asyncio.TimeoutError
+
+    async def wait_until_status(
+            self, status: JobStatusType,
+            timeout: T.Optional[float] = None):
+        """Wait until the job is in the target status."""
+        await self.wait_until(lambda job: job.status == status, timeout)
+
     @property
     def cache_dir(self) -> T.Optional[Path]:
         """Get the cache dir of the job."""

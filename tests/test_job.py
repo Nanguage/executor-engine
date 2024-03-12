@@ -167,3 +167,20 @@ async def test_async_err_callback():
         job1 = ProcessJob(raise_err, error_callback=err_callback)
         await engine.submit_async(job1)
         await job1.join()
+
+
+@pytest.mark.asyncio
+async def test_wait_until():
+    def add(a, b):
+        time.sleep(3)
+        return a + b
+
+    with Engine() as engine:
+        job1 = ProcessJob(add, (1, 2))
+        job2 = ProcessJob(add, (1, 2))
+        engine.submit(job1, job2)
+        await job1.wait_until_status("running")
+        assert job1.status == "running"
+        with pytest.raises(asyncio.TimeoutError):
+            await job2.wait_until_status("done", timeout=1)
+        engine.wait()

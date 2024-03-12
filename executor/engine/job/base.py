@@ -385,7 +385,7 @@ class Job(ExecutorObj):
         timeout: T.Optional[float] = None
     ):
         """Wait until the check_func return True."""
-        total_time = 0
+        total_time = 0.0
         while not check_func(self):
             await asyncio.sleep(self.wait_time_delta)
             total_time += self.wait_time_delta

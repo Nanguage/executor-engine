@@ -116,18 +116,14 @@ def SubprocessJob(
                 path_stdout = cache_dir / 'stdout.txt'
                 path_stderr = cache_dir / 'stderr.txt'
 
-                def run_cmd():  # pragma: no cover
-                    runner = ProcessRunner(cmd)
-                    self.runner = runner
+                def _run_cmd(runner: ProcessRunner):  # pragma: no cover
                     runner.run(**pkwargs)
                     with open(path_stdout, 'w') as fo, \
                          open(path_stderr, 'w') as fe:
                         retcode = runner.write_stream_until_stop(fo, fe)
                     return retcode
             else:
-                def run_cmd():
-                    runner = ProcessRunner(cmd)
-                    self.runner = runner
+                def _run_cmd(runner: ProcessRunner):
                     runner.run(
                         capture_stdout=False,
                         capture_stderr=False,
@@ -135,6 +131,17 @@ def SubprocessJob(
                     )
                     retcode = runner.proc.wait()
                     return retcode
+
+            if base_class is ThreadJob:
+                runner = ProcessRunner(cmd)
+                self.runner = runner
+
+                def run_cmd():
+                    return _run_cmd(runner)
+            else:
+                def run_cmd():
+                    runner = ProcessRunner(cmd)
+                    return _run_cmd(runner)
 
             def func():
                 if record_cmd:

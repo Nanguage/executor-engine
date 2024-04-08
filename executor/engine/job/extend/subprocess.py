@@ -83,6 +83,7 @@ def SubprocessJob(
                 redirect_out_err=redirect_out_err,
                 **attrs
             )
+            self.runner: T.Optional[ProcessRunner] = None
 
         def resolve_target_dir(self, target_dir: str) -> str:
             if target_dir == "$cache_dir":
@@ -117,6 +118,7 @@ def SubprocessJob(
 
                 def run_cmd():  # pragma: no cover
                     runner = ProcessRunner(cmd)
+                    self.runner = runner
                     runner.run(**pkwargs)
                     with open(path_stdout, 'w') as fo, \
                          open(path_stderr, 'w') as fe:
@@ -125,6 +127,7 @@ def SubprocessJob(
             else:
                 def run_cmd():
                     runner = ProcessRunner(cmd)
+                    self.runner = runner
                     runner.run(
                         capture_stdout=False,
                         capture_stderr=False,
@@ -142,5 +145,10 @@ def SubprocessJob(
                         f"Command '{cmd}' run failed, return code: {retcode}")
                 return retcode
             self.func = func
+
+        async def cancel(self):
+            if self.runner is not None:
+                self.runner.proc.terminate()
+            await super().cancel()
 
     return _SubprocessJob()

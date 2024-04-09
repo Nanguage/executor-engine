@@ -154,3 +154,17 @@ def test_passing_env():
             assert f.read().strip() == '2'
 
     asyncio.run(submit_job())
+
+
+def test_cancel():
+    engine = Engine()
+
+    async def submit_job():
+        job = SubprocessJob("python -c 'import time; time.sleep(10)'")
+        await engine.submit_async(job)
+        await asyncio.sleep(1)
+        await job.cancel()
+        await job.join()
+        assert job.status == "cancelled"
+
+    asyncio.run(submit_job())

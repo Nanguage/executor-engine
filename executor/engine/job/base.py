@@ -10,7 +10,7 @@ import cloudpickle
 
 from .utils import (
     JobStatusAttr, InvalidStateError, JobStatusType,
-    ExecutorError, valid_job_statuses
+    ExecutorError, valid_job_statuses, GeneratorWrapper
 )
 from .condition import Condition, AfterOthers, AllSatisfied
 from ..middle.capture import CaptureOut
@@ -275,7 +275,10 @@ class Job(ExecutorObj):
                 self.status = "running"
                 try:
                     res = await self.run()
-                    await self.on_done(res)
+                    if not isinstance(res, GeneratorWrapper):
+                        await self.on_done(res)
+                    else:
+                        self.future.set_result(res)
                     return res
                 except Exception as e:
                     await self.on_failed(e)
@@ -285,7 +288,22 @@ class Job(ExecutorObj):
 
     async def run(self):
         """Run the job."""
-        pass
+        if inspect.isgeneratorfunction(self.func) or inspect.isasyncgenfunction(self.func):  # noqa: E501
+            return await self.run_generator()
+        else:
+            return await self.run_function()
+
+    async def run_function(self):  # pragma: no cover
+        """Run the job as a function."""
+        msg = f"{type(self).__name__} does not implement " \
+              "run_function method."
+        raise NotImplementedError(msg)
+
+    async def run_generator(self):  # pragma: no cover
+        """Run the job as a generator."""
+        msg = f"{type(self).__name__} does not implement " \
+              "run_generator method."
+        raise NotImplementedError(msg)
 
     async def rerun(self, check_status: bool = True):
         """Rerun the job."""
@@ -351,9 +369,11 @@ class Job(ExecutorObj):
 
     def result(self) -> T.Any:
         """Get the result of the job."""
-        if self.status != "done":
-            raise InvalidStateError(self, ['done'])
-        return self.future.result()
+        res = self.future.result()
+        if not isinstance(res, GeneratorWrapper):
+            if self.status != "done":
+                raise InvalidStateError(self, ['done'])
+        return res
 
     def exception(self):
         """Get the exception of the job."""

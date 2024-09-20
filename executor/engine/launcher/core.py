@@ -127,6 +127,10 @@ class LauncherBase(object):
         else:
             return job.result()
 
+    def __call__(
+            self, *args: T.Any, **kwargs: T.Any) -> T.Any:  # pragma: no cover
+        raise NotImplementedError("Subclasses must implement __call__")
+
 
 class SyncLauncher(LauncherBase):
 

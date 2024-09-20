@@ -188,24 +188,57 @@ async def test_wait_until():
 
 @pytest.mark.asyncio
 async def test_generator():
-    def gen():
-        for i in range(10):
-            yield i
-
-    async def gen_async(n):
-        for i in range(n):
-            yield i
-
     with Engine() as engine:
+        def gen():
+            for i in range(10):
+                yield i
+
         job = ProcessJob(gen)
         await engine.submit_async(job)
         await job.join()
-        assert list(job.result()) == list(range(10))
+        assert job.status == "running"
+        g = job.result()
+        assert list(g) == list(range(10))
+        assert job.status == "done"
+
+        async def gen_async(n):
+            for i in range(n):
+                yield i
 
         job = ProcessJob(gen_async, (10,))
         await engine.submit_async(job)
         await job.join()
         res = []
         async for i in job.result():
+            assert job.status == "running"
             res.append(i)
+        assert job.status == "done"
         assert res == list(range(10))
+
+        def gen_error():
+            for i in range(2):
+                print(i)
+                yield i
+            raise ValueError("error")
+
+        job = ProcessJob(gen_error)
+        await engine.submit_async(job)
+        await job.join()
+        with pytest.raises(ValueError):
+            for i in job.result():
+                assert job.status == "running"
+        assert job.status == "failed"
+
+        async def gen_error():
+            for i in range(2):
+                print(i)
+                yield i
+            raise ValueError("error")
+
+        job = ProcessJob(gen_error)
+        await engine.submit_async(job)
+        await job.join()
+        with pytest.raises(ValueError):
+            async for i in job.result():
+                assert job.status == "running"
+        assert job.status == "failed"

@@ -66,11 +66,33 @@ class GeneratorWrapper(T.Generic[_T]):
         return self
 
     def __next__(self) -> _T:
-        return self._job._executor.submit(_gen_next).result()
+        try:
+            return self._job._executor.submit(_gen_next).result()
+        except Exception as e:
+            engine = self._job.engine
+            if engine is None:
+                loop = asyncio.get_event_loop()
+            else:
+                loop = engine.loop
+            if isinstance(e, StopIteration):
+                cor = self._job.on_done(self)
+            else:
+                cor = self._job.on_failed(e)
+            fut = asyncio.run_coroutine_threadsafe(cor, loop)
+            fut.result()
+            raise e
 
     def __aiter__(self):
         return self
 
     async def __anext__(self) -> _T:
-        fut = self._job._executor.submit(_gen_anext)
-        return (await asyncio.wrap_future(fut))
+        try:
+            fut = self._job._executor.submit(_gen_anext)
+            res = await asyncio.wrap_future(fut)
+            return res
+        except Exception as e:
+            if isinstance(e, StopAsyncIteration):
+                await self._job.on_done(self)
+            else:
+                await self._job.on_failed(e)
+            raise e

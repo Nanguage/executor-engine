@@ -53,7 +53,7 @@ class DaskJob(Job):
                 True
             )
 
-    async def run(self):
+    async def run_function(self):
         """Run job with Dask."""
         client = self.engine.dask_client
         func = functools.partial(self.func, **self.kwargs)

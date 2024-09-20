@@ -40,7 +40,7 @@ class ThreadJob(Job):
                 True
             )
 
-    async def run(self):
+    async def run_function(self):
         """Run job in thread pool."""
         self._executor = ThreadPoolExecutor(1)
         loop = asyncio.get_running_loop()

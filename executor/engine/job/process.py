@@ -1,9 +1,11 @@
 import asyncio
 import functools
+import inspect
 
 from loky.process_executor import ProcessPoolExecutor
 
 from .base import Job
+from .utils import _gen_initializer, GeneratorWrapper
 
 
 class ProcessJob(Job):
@@ -43,11 +45,16 @@ class ProcessJob(Job):
 
     async def run(self):
         """Run job in process pool."""
-        self._executor = ProcessPoolExecutor(1)
-        loop = asyncio.get_running_loop()
-        func = functools.partial(self.func, **self.kwargs)
-        fut = loop.run_in_executor(self._executor, func, *self.args)
-        result = await fut
+        func = functools.partial(self.func, *self.args, **self.kwargs)
+        if (inspect.isgeneratorfunction(self.func)
+            or inspect.isasyncgenfunction(self.func)):
+            self._executor = ProcessPoolExecutor(1, initializer=_gen_initializer, initargs=(func,))
+            result = GeneratorWrapper(self)
+        else:
+            self._executor = ProcessPoolExecutor(1)
+            loop = asyncio.get_running_loop()
+            fut = loop.run_in_executor(self._executor, func)
+            result = await fut
         return result
 
     async def cancel(self):

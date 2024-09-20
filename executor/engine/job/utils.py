@@ -1,4 +1,5 @@
 import typing as T
+import asyncio
 from datetime import datetime
 
 from ..utils import CheckAttrRange, ExecutorError
@@ -34,3 +35,41 @@ class InvalidStateError(ExecutorError):
         super().__init__(
             f"Invalid state: {job} is in {job.status} state, "
             f"but should be in {valid_status} state.")
+
+
+_T = T.TypeVar("_T")
+
+def _gen_initializer(gen_func, args=tuple(), kwargs={}):
+    global _generator
+    _generator = gen_func(*args, **kwargs)
+
+
+def _gen_next():
+    global _generator
+    return next(_generator)
+
+
+def _gen_anext():
+    global _generator
+    return asyncio.run(_generator.__anext__())
+
+
+class GeneratorWrapper(T.Generic[_T]):
+    """
+    wrap a generator in executor pool
+    """
+    def __init__(self, job: "Job"):
+        self._job = job
+
+    def __iter__(self):
+        return self
+
+    def __next__(self) -> _T:
+        return self._job._executor.submit(_gen_next).result()
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self) -> _T:
+        fut = self._job._executor.submit(_gen_anext)
+        return (await asyncio.wrap_future(fut))

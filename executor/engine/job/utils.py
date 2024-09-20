@@ -39,17 +39,18 @@ class InvalidStateError(ExecutorError):
 
 _T = T.TypeVar("_T")
 
-def _gen_initializer(gen_func, args=tuple(), kwargs={}):
+
+def _gen_initializer(gen_func, args=tuple(), kwargs={}):  # pragma: no cover
     global _generator
     _generator = gen_func(*args, **kwargs)
 
 
-def _gen_next():
+def _gen_next():  # pragma: no cover
     global _generator
     return next(_generator)
 
 
-def _gen_anext():
+def _gen_anext():  # pragma: no cover
     global _generator
     return asyncio.run(_generator.__anext__())
 

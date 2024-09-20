@@ -184,3 +184,28 @@ async def test_wait_until():
         with pytest.raises(asyncio.TimeoutError):
             await job2.wait_until_status("done", timeout=1)
         engine.wait()
+
+
+@pytest.mark.asyncio
+async def test_generator():
+    def gen():
+        for i in range(10):
+            yield i
+
+    async def gen_async(n):
+        for i in range(n):
+            yield i
+
+    with Engine() as engine:
+        job = ProcessJob(gen)
+        await engine.submit_async(job)
+        await job.join()
+        assert list(job.result()) == list(range(10))
+
+        job = ProcessJob(gen_async, (10,))
+        await engine.submit_async(job)
+        await job.join()
+        res = []
+        async for i in job.result():
+            res.append(i)
+        assert res == list(range(10))

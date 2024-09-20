@@ -46,7 +46,8 @@ class ProcessJob(Job):
     async def run(self):
         """Run job in process pool."""
         func = functools.partial(self.func, *self.args, **self.kwargs)
-        if inspect.isgeneratorfunction(self.func): # TODO: support async generator
+        if (inspect.isgeneratorfunction(self.func)
+            or inspect.isasyncgenfunction(self.func)):
             self._executor = ProcessPoolExecutor(1, initializer=_gen_initializer, initargs=(func,))
             result = GeneratorWrapper(self)
         else:

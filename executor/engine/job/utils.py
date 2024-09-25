@@ -2,6 +2,7 @@ import typing as T
 import asyncio
 from datetime import datetime
 from concurrent.futures import Future
+import threading
 
 from ..utils import CheckAttrRange, ExecutorError
 
@@ -42,22 +43,25 @@ _T = T.TypeVar("_T")
 
 
 def _gen_initializer(gen_func, args=tuple(), kwargs={}):  # pragma: no cover
-    global _generator
-    _generator = gen_func(*args, **kwargs)
+    global _thread_locals
+    if "_thread_locals" not in globals():
+        # avoid conflict for ThreadJob
+        _thread_locals = threading.local()
+    _thread_locals._generator = gen_func(*args, **kwargs)
 
 
 def _gen_next(fut: T.Optional[Future] = None):  # pragma: no cover
-    global _generator
+    global _thread_locals
     if fut is None:
-        return next(_generator)
+        return next(_thread_locals._generator)
     else:
         return next(fut)
 
 
 def _gen_anext(fut: T.Optional[Future] = None):  # pragma: no cover
-    global _generator
+    global _thread_locals
     if fut is None:
-        return asyncio.run(_generator.__anext__())
+        return asyncio.run(_thread_locals._generator.__anext__())
     else:
         return asyncio.run(fut.__anext__())
 

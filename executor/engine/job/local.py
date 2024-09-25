@@ -6,3 +6,8 @@ class LocalJob(Job):
         """Run job in local thread."""
         res = self.func(*self.args, **self.kwargs)
         return res
+
+    async def run_generator(self):
+        """Run job as a generator."""
+        res = self.func(*self.args, **self.kwargs)
+        return res

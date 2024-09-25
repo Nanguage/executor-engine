@@ -1,6 +1,7 @@
 import typing as T
 import asyncio
 from datetime import datetime
+from concurrent.futures import Future
 
 from ..utils import CheckAttrRange, ExecutorError
 
@@ -45,29 +46,36 @@ def _gen_initializer(gen_func, args=tuple(), kwargs={}):  # pragma: no cover
     _generator = gen_func(*args, **kwargs)
 
 
-def _gen_next():  # pragma: no cover
+def _gen_next(fut: T.Optional[Future] = None):  # pragma: no cover
     global _generator
-    return next(_generator)
+    if fut is None:
+        return next(_generator)
+    else:
+        return next(fut)
 
 
-def _gen_anext():  # pragma: no cover
+def _gen_anext(fut: T.Optional[Future] = None):  # pragma: no cover
     global _generator
-    return asyncio.run(_generator.__anext__())
+    if fut is None:
+        return asyncio.run(_generator.__anext__())
+    else:
+        return asyncio.run(fut.__anext__())
 
 
 class GeneratorWrapper(T.Generic[_T]):
     """
     wrap a generator in executor pool
     """
-    def __init__(self, job: "Job"):
+    def __init__(self, job: "Job", fut: T.Optional[Future] = None):
         self._job = job
+        self._fut = fut
 
     def __iter__(self):
         return self
 
     def __next__(self) -> _T:
         try:
-            return self._job._executor.submit(_gen_next).result()
+            return self._job._executor.submit(_gen_next, self._fut).result()
         except Exception as e:
             engine = self._job.engine
             if engine is None:
@@ -87,7 +95,7 @@ class GeneratorWrapper(T.Generic[_T]):
 
     async def __anext__(self) -> _T:
         try:
-            fut = self._job._executor.submit(_gen_anext)
+            fut = self._job._executor.submit(_gen_anext, self._fut)
             res = await asyncio.wrap_future(fut)
             return res
         except Exception as e:

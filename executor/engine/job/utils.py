@@ -74,17 +74,25 @@ class GeneratorWrapper(T.Generic[_T]):
     def __init__(self, job: "Job", fut: T.Optional[Future] = None):
         self._job = job
         self._fut = fut
+        self._local_res = None
 
     def __iter__(self):
         return self
 
     def __next__(self) -> _T:
         try:
-            return self._job._executor.submit(_gen_next, self._fut).result()
+            if self._job._executor is not None:
+                return self._job._executor.submit(
+                    _gen_next, self._fut).result()
+            else:
+                if self._local_res is None:
+                    self._local_res = self._job.func(
+                        *self._job.args, **self._job.kwargs)
+                return next(self._local_res)
         except Exception as e:
             engine = self._job.engine
             if engine is None:
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_event_loop()  # pragma: no cover
             else:
                 loop = engine.loop
             if isinstance(e, StopIteration):
@@ -100,9 +108,15 @@ class GeneratorWrapper(T.Generic[_T]):
 
     async def __anext__(self) -> _T:
         try:
-            fut = self._job._executor.submit(_gen_anext, self._fut)
-            res = await asyncio.wrap_future(fut)
-            return res
+            if self._job._executor is not None:
+                fut = self._job._executor.submit(_gen_anext, self._fut)
+                res = await asyncio.wrap_future(fut)
+                return res
+            else:
+                if self._local_res is None:
+                    self._local_res = self._job.func(
+                        *self._job.args, **self._job.kwargs)
+                return await self._local_res.__anext__()
         except Exception as e:
             if isinstance(e, StopAsyncIteration):
                 await self._job.on_done(self)

@@ -319,6 +319,48 @@ with Engine() as engine:
     engine.wait()
 ```
 
+### Generator support
+
+`executor.engine` supports generator job, which is a special job that returns a generator.
+
+```python
+import asyncio
+from executor.engine import Engine, ProcessJob
+
+engine = Engine()
+
+def gen():
+    for i in range(10):
+        yield i
+
+async def async_gen():
+    for i in range(10):
+        await asyncio.sleep(0.5)
+        yield i
+
+async def main():
+    job = ProcessJob(gen)
+    await engine.submit_async(job)
+    await job.wait_until_status("running")
+    for i in job.result():
+        print(i)
+
+    job = ProcessJob(async_gen)
+    await engine.submit_async(job)
+    await job.wait_until_status("running")
+    async for i in job.result():
+        print(i)
+
+asyncio.run(main())
+```
+
+!!! info
+    `LocalJob`, `ThreadJob`, `ProcessJob`, `DaskJob` support generator job.
+
+!!! warning
+    Do not use `engine.wait()` to wait the generator job done,
+    because the generator job's future is done only when the generator is exhausted.
+
 ## Engine
 
 `executor.engine` provides a `Engine` class for managing jobs.

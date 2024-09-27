@@ -76,3 +76,22 @@ def test_set_client():
         client.close()
 
     asyncio.run(main())
+
+
+@pytest.mark.asyncio
+async def test_dask_generator():
+    with Engine() as engine:
+        async def gen():
+            for i in range(10):
+                yield i
+
+        job = DaskJob(gen)
+        await engine.submit_async(job)
+        await job.wait_until_status("running")
+        assert job.status == "running"
+        g = job.result()
+        i = 0
+        async for x in g:
+            assert x == i
+            i += 1
+        assert job.status == "done"

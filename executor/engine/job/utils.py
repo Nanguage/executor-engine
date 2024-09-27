@@ -38,7 +38,6 @@ class InvalidStateError(ExecutorError):
             f"but should be in {valid_status} state.")
 
 
-_T = T.TypeVar("_T")
 _thread_locals = threading.local()
 
 
@@ -66,7 +65,7 @@ def _gen_anext(fut=None):  # pragma: no cover
         return asyncio.run(fut.__anext__())
 
 
-class GeneratorWrapper(T.Generic[_T]):
+class GeneratorWrapper():
     """
     wrap a generator in executor pool
     """
@@ -79,7 +78,7 @@ class GeneratorWrapper(T.Generic[_T]):
     def __iter__(self):
         return self
 
-    def __next__(self) -> _T:
+    def __next__(self):
         try:
             if self._job._executor is not None:
                 return self._job._executor.submit(
@@ -106,7 +105,7 @@ class GeneratorWrapper(T.Generic[_T]):
     def __aiter__(self):
         return self
 
-    async def __anext__(self) -> _T:
+    async def __anext__(self):
         try:
             if self._job._executor is not None:
                 fut = self._job._executor.submit(_gen_anext, self._fut)

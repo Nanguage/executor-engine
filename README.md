@@ -77,6 +77,11 @@ from executor.engine import Engine, ProcessJob
 def add(a, b):
     return a + b
 
+async def stream():
+    for i in range(5):
+      await asyncio.sleep(0.5)
+      yield i
+
 with Engine() as engine:
     # job1 and job2 will be executed in parallel
     job1 = ProcessJob(add, args=(1, 2))
@@ -86,6 +91,13 @@ with Engine() as engine:
     engine.submit(job1, job2, job3)
     engine.wait_job(job3)  # wait for job3 done
     print(job3.result())  # 10
+
+    # generator
+    job4 = ProcessJob(stream)
+    # do not do engine.wait because the generator job's future is done only when StopIteration
+    await engine.submit_async(job4)
+    async for x in job3.result():
+      print(x)
 ```
 
 Async mode example:

@@ -3,6 +3,7 @@ import functools
 from concurrent.futures import ThreadPoolExecutor
 
 from .base import Job
+from .utils import _gen_initializer, GeneratorWrapper
 
 
 class ThreadJob(Job):
@@ -42,11 +43,19 @@ class ThreadJob(Job):
 
     async def run_function(self):
         """Run job in thread pool."""
+        func = functools.partial(self.func, *self.args, **self.kwargs)
         self._executor = ThreadPoolExecutor(1)
         loop = asyncio.get_running_loop()
-        func = functools.partial(self.func, **self.kwargs)
-        fut = loop.run_in_executor(self._executor, func, *self.args)
+        fut = loop.run_in_executor(self._executor, func)
         result = await fut
+        return result
+
+    async def run_generator(self):
+        """Run job as a generator."""
+        func = functools.partial(self.func, *self.args, **self.kwargs)
+        self._executor = ThreadPoolExecutor(
+            1, initializer=_gen_initializer, initargs=(func,))
+        result = GeneratorWrapper(self)
         return result
 
     async def cancel(self):

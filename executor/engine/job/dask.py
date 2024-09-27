@@ -3,6 +3,7 @@ import functools
 from dask.distributed import Client, LocalCluster
 
 from .base import Job
+from .utils import GeneratorWrapper
 from ..utils import PortManager
 
 
@@ -56,10 +57,19 @@ class DaskJob(Job):
     async def run_function(self):
         """Run job with Dask."""
         client = self.engine.dask_client
-        func = functools.partial(self.func, **self.kwargs)
-        fut = client.submit(func, *self.args)
+        func = functools.partial(self.func, *self.args, **self.kwargs)
+        fut = client.submit(func)
         self._executor = fut
         result = await fut
+        return result
+
+    async def run_generator(self):
+        """Run job as a generator."""
+        client = self.engine.dask_client
+        func = functools.partial(self.func, *self.args, **self.kwargs)
+        fut = client.submit(func)
+        self._executor = client.get_executor(pure=False)
+        result = GeneratorWrapper(self, fut)
         return result
 
     async def cancel(self):

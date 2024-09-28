@@ -1,5 +1,6 @@
 import typing as T
 import asyncio
+import inspect
 from datetime import datetime
 from concurrent.futures import Future
 import threading
@@ -49,20 +50,28 @@ def _gen_initializer(gen_func, args=tuple(), kwargs={}):  # pragma: no cover
     _thread_locals._generator = gen_func(*args, **kwargs)
 
 
-def _gen_next(fut=None):  # pragma: no cover
+def _gen_next(send_value=None, fut=None):  # pragma: no cover
     global _thread_locals
     if fut is None:
-        return next(_thread_locals._generator)
+        g = _thread_locals._generator
     else:
-        return next(fut)
+        g = fut
+    if send_value is None:
+        return next(g)
+    else:
+        return g.send(send_value)
 
 
-def _gen_anext(fut=None):  # pragma: no cover
+def _gen_anext(send_value=None, fut=None):  # pragma: no cover
     global _thread_locals
     if fut is None:
-        return asyncio.run(_thread_locals._generator.__anext__())
+        g = _thread_locals._generator
     else:
-        return asyncio.run(fut.__anext__())
+        g = fut
+    if send_value is None:
+        return asyncio.run(g.__anext__())
+    else:
+        return asyncio.run(g.asend(send_value))
 
 
 class GeneratorWrapper():
@@ -75,19 +84,28 @@ class GeneratorWrapper():
         self._fut = fut
         self._local_res = None
 
+
+class SyncGeneratorWrapper(GeneratorWrapper):
+    """
+    wrap a generator in executor pool
+    """
     def __iter__(self):
         return self
 
-    def __next__(self):
+    def _next(self, send_value=None):
         try:
             if self._job._executor is not None:
                 return self._job._executor.submit(
-                    _gen_next, self._fut).result()
+                    _gen_next, send_value, self._fut).result()
             else:
+                # create local generator
                 if self._local_res is None:
                     self._local_res = self._job.func(
                         *self._job.args, **self._job.kwargs)
-                return next(self._local_res)
+                if send_value is not None:
+                    return self._local_res.send(send_value)
+                else:
+                    return next(self._local_res)
         except Exception as e:
             engine = self._job.engine
             if engine is None:
@@ -102,23 +120,52 @@ class GeneratorWrapper():
             fut.result()
             raise e
 
+    def __next__(self):
+        return self._next()
+
+    def send(self, value):
+        return self._next(value)
+
+
+class AsyncGeneratorWrapper(GeneratorWrapper):
+    """
+    wrap a generator in executor pool
+    """
     def __aiter__(self):
         return self
 
-    async def __anext__(self):
+    async def _anext(self, send_value=None):
         try:
             if self._job._executor is not None:
-                fut = self._job._executor.submit(_gen_anext, self._fut)
+                fut = self._job._executor.submit(
+                    _gen_anext, send_value, self._fut)
                 res = await asyncio.wrap_future(fut)
                 return res
             else:
                 if self._local_res is None:
                     self._local_res = self._job.func(
                         *self._job.args, **self._job.kwargs)
-                return await self._local_res.__anext__()
+                if send_value is not None:
+                    return await self._local_res.asend(send_value)
+                else:
+                    return await self._local_res.__anext__()
         except Exception as e:
             if isinstance(e, StopAsyncIteration):
                 await self._job.on_done(self)
             else:
                 await self._job.on_failed(e)
             raise e
+
+    async def __anext__(self):
+        return await self._anext()
+
+    async def asend(self, value):
+        return await self._anext(value)
+
+
+def create_generator_wrapper(
+        job: "Job", fut: T.Optional[Future] = None) -> GeneratorWrapper:
+    if inspect.isasyncgenfunction(job.func):
+        return AsyncGeneratorWrapper(job, fut)
+    else:
+        return SyncGeneratorWrapper(job, fut)

@@ -3,7 +3,7 @@ import functools
 from concurrent.futures import ThreadPoolExecutor
 
 from .base import Job
-from .utils import _gen_initializer, GeneratorWrapper
+from .utils import _gen_initializer, create_generator_wrapper
 
 
 class ThreadJob(Job):
@@ -55,7 +55,7 @@ class ThreadJob(Job):
         func = functools.partial(self.func, *self.args, **self.kwargs)
         self._executor = ThreadPoolExecutor(
             1, initializer=_gen_initializer, initargs=(func,))
-        result = GeneratorWrapper(self)
+        result = create_generator_wrapper(self)
         return result
 
     async def cancel(self):

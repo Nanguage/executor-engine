@@ -361,6 +361,33 @@ asyncio.run(main())
     Do not use `engine.wait()` to wait the generator job done,
     because the generator job's future is done only when the generator is exhausted.
 
+Generator support the `send` method, you can use this feature to pass data to the generator, it allow you communicate with another thread/process:
+
+```python
+import asyncio
+from executor.engine import Engine, ProcessJob
+
+def calculator():
+    res = None
+    while True:
+        expr = yield res
+        res = eval(expr)
+
+
+async def main():
+    with Engine() as engine:
+        job = ProcessJob(calculator)
+        await engine.submit_async(job)
+        await job.wait_until_status("running")
+        g = job.result()
+        g.send(None)  # initialize the generator
+        print(g.send("1 + 2"))  # 3
+        print(g.send("3 * 4"))  # 12
+        print(g.send("(1 + 2) * 4"))  # 12
+
+asyncio.run(main())
+```
+
 ## Engine
 
 `executor.engine` provides a `Engine` class for managing jobs.

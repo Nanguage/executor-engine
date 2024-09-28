@@ -4,7 +4,7 @@ import functools
 from loky.process_executor import ProcessPoolExecutor
 
 from .base import Job
-from .utils import _gen_initializer, GeneratorWrapper
+from .utils import _gen_initializer, create_generator_wrapper
 
 
 class ProcessJob(Job):
@@ -56,7 +56,7 @@ class ProcessJob(Job):
         func = functools.partial(self.func, *self.args, **self.kwargs)
         self._executor = ProcessPoolExecutor(
             1, initializer=_gen_initializer, initargs=(func,))
-        result = GeneratorWrapper(self)
+        result = create_generator_wrapper(self)
         return result
 
     async def cancel(self):

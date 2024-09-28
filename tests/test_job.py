@@ -286,3 +286,76 @@ async def test_generator_error():
             async for i in job.result():
                 assert job.status == "running"
         assert job.status == "failed"
+
+
+@pytest.mark.asyncio
+async def test_generator_send():
+    with Engine() as engine:
+        def gen():
+            res = 0
+            for _ in range(3):
+                res += yield res
+
+        job = ProcessJob(gen)
+        await engine.submit_async(job)
+        await job.wait_until_status("running")
+        assert job.status == "running"
+        g = job.result()
+        assert g.send(None) == 0
+        assert g.send(1) == 1
+        assert g.send(2) == 3
+        with pytest.raises(StopIteration):
+            g.send(3)
+        assert job.status == "done"
+
+        async def gen_async():
+            res = 0
+            for _ in range(3):
+                res += yield res
+
+        job = ProcessJob(gen_async)
+        await engine.submit_async(job)
+        await job.wait_until_status("running")
+        assert job.status == "running"
+        g = job.result()
+        assert await g.asend(None) == 0
+        assert await g.asend(1) == 1
+        assert await g.asend(2) == 3
+        with pytest.raises(StopAsyncIteration):
+            await g.asend(3)
+        assert job.status == "done"
+
+
+@pytest.mark.asyncio
+async def test_generator_send_localjob():
+    with Engine() as engine:
+        def gen():
+            res = 0
+            for _ in range(3):
+                res += yield res
+
+        job = LocalJob(gen)
+        engine.submit(job)
+        await job.wait_until_status("running")
+        g = job.result()
+        assert g.send(None) == 0
+        assert g.send(1) == 1
+        assert g.send(2) == 3
+        with pytest.raises(StopIteration):
+            g.send(3)
+
+        # test async generator
+        async def gen_async():
+            res = 0
+            for _ in range(3):
+                res += yield res
+
+        job = LocalJob(gen_async)
+        engine.submit(job)
+        await job.wait_until_status("running")
+        g = job.result()
+        assert await g.asend(None) == 0
+        assert await g.asend(1) == 1
+        assert await g.asend(2) == 3
+        with pytest.raises(StopAsyncIteration):
+            await g.asend(3)

@@ -1,5 +1,5 @@
 from .base import Job
-from .utils import GeneratorWrapper
+from .utils import create_generator_wrapper
 
 
 class LocalJob(Job):
@@ -10,4 +10,4 @@ class LocalJob(Job):
 
     async def run_generator(self):
         """Run job as a generator."""
-        return GeneratorWrapper(self)
+        return create_generator_wrapper(self)

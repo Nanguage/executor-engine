@@ -169,3 +169,7 @@ def create_generator_wrapper(
         return AsyncGeneratorWrapper(job, fut)
     else:
         return SyncGeneratorWrapper(job, fut)
+
+
+def run_async_func(func, *args, **kwargs):
+    return asyncio.run(func(*args, **kwargs))

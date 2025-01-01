@@ -104,3 +104,24 @@ async def test_dask_generator():
         assert x == i
         i += 1
     assert job.status == "done"
+
+
+@pytest.mark.asyncio
+async def test_dask_async_func():
+    port = PortManager.find_free_port()
+    cluster = LocalCluster(
+        dashboard_address=f":{port}",
+        asynchronous=True,
+        processes=False,
+    )
+    client = Client(cluster)
+    engine = Engine()
+    engine.dask_client = client
+
+    async def async_func(x):
+        return x + 1
+
+    job = DaskJob(async_func, (1,))
+    await engine.submit_async(job)
+    await job.wait_until_status("done")
+    assert job.result() == 2

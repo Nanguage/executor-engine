@@ -1,9 +1,12 @@
 import asyncio
 import functools
+from inspect import iscoroutinefunction
 from concurrent.futures import ThreadPoolExecutor
 
 from .base import Job
-from .utils import _gen_initializer, create_generator_wrapper
+from .utils import (
+    _gen_initializer, create_generator_wrapper, run_async_func
+)
 
 
 class ThreadJob(Job):
@@ -44,6 +47,8 @@ class ThreadJob(Job):
     async def run_function(self):
         """Run job in thread pool."""
         func = functools.partial(self.func, *self.args, **self.kwargs)
+        if iscoroutinefunction(func):
+            func = functools.partial(run_async_func, func)
         self._executor = ThreadPoolExecutor(1)
         loop = asyncio.get_running_loop()
         fut = loop.run_in_executor(self._executor, func)

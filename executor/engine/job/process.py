@@ -1,10 +1,13 @@
 import asyncio
 import functools
+from inspect import iscoroutinefunction
 
 from loky.process_executor import ProcessPoolExecutor
 
 from .base import Job
-from .utils import _gen_initializer, create_generator_wrapper
+from .utils import (
+    _gen_initializer, create_generator_wrapper, run_async_func
+)
 
 
 class ProcessJob(Job):
@@ -45,6 +48,8 @@ class ProcessJob(Job):
     async def run_function(self):
         """Run job in process pool."""
         func = functools.partial(self.func, *self.args, **self.kwargs)
+        if iscoroutinefunction(func):
+            func = functools.partial(run_async_func, func)
         self._executor = ProcessPoolExecutor(1)
         loop = asyncio.get_running_loop()
         fut = loop.run_in_executor(self._executor, func)

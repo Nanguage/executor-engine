@@ -359,3 +359,16 @@ async def test_generator_send_localjob():
         assert await g.asend(2) == 3
         with pytest.raises(StopAsyncIteration):
             await g.asend(3)
+
+
+@pytest.mark.asyncio
+async def test_async_func_job():
+    with Engine() as engine:
+        async def async_func(x):
+            return x + 1
+
+        for job_cls in [LocalJob, ThreadJob, ProcessJob]:
+            job = job_cls(async_func, (1,))
+            await engine.submit_async(job)
+            await job.wait_until_status("done")
+            assert job.result() == 2

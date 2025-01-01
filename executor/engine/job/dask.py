@@ -1,9 +1,10 @@
 import functools
+from inspect import iscoroutinefunction
 
 from dask.distributed import Client, LocalCluster
 
 from .base import Job
-from .utils import create_generator_wrapper
+from .utils import create_generator_wrapper, run_async_func
 from ..utils import PortManager
 
 
@@ -58,6 +59,8 @@ class DaskJob(Job):
         """Run job with Dask."""
         client = self.engine.dask_client
         func = functools.partial(self.func, *self.args, **self.kwargs)
+        if iscoroutinefunction(func):
+            func = functools.partial(run_async_func, func)
         fut = client.submit(func)
         self._executor = fut
         result = await fut

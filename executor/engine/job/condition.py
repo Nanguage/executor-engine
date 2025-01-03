@@ -127,12 +127,12 @@ def _parse_clock_str(time_str: str) -> T.Tuple[int, int, int]:
     minute: int
     second: int
     if time_str.count(":") == 1:
-        hour, minute = time_str.split(":")
-        hour, minute = int(hour), int(minute)
+        _hour, _minute = time_str.split(":")
+        hour, minute = int(_hour), int(_minute)
         second = 0
     elif time_str.count(":") == 2:
-        hour, minute, second = time_str.split(":")
-        hour, minute, second = int(hour), int(minute), int(second)
+        _hour, _minute, _second = time_str.split(":")
+        hour, minute, second = int(_hour), int(_minute), int(_second)
     else:
         hour = int(time_str)
         minute = 0

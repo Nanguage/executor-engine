@@ -6,7 +6,7 @@ from ..condition import Condition
 
 
 if T.TYPE_CHECKING:
-    from executor.engine.core import Engine
+    from ...core import Engine
 
 
 def SentinelJob(
@@ -32,6 +32,7 @@ def SentinelJob(
     if "name" not in sentinel_attrs:
         sentinel_attrs["name"] = f"sentinel-{func.__name__}"
 
+    base_class: T.Type[Job]
     if isinstance(job_type, str):
         if job_type == "process":
             base_class = ProcessJob

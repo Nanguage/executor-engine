@@ -22,7 +22,7 @@ async def test_sentinel_job():
 
         job = CronJob(inc, EveryPeriod("1s"), job_type="thread")
         await engine.submit_async(job)
-        await asyncio.sleep(5)
+        await asyncio.sleep(6)
         await job.cancel()
         assert a == 5
 

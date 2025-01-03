@@ -1,11 +1,22 @@
+import pytest
+
 from datetime import datetime, timedelta
 import asyncio
 
 from executor.engine.core import Engine
 from executor.engine.job import LocalJob, ThreadJob, ProcessJob
 from executor.engine.job.condition import (
-    AfterAnother, AfterOthers, AfterTimepoint,
-    AnySatisfied, AllSatisfied
+    AfterAnother, AfterOthers,
+    AnySatisfied, AllSatisfied,
+    _parse_period_str,
+    _parse_weekday_str,
+    _parse_clock_str,
+    AfterClock,
+    BeforeClock,
+    AfterTimepoint,
+    BeforeTimepoint,
+    AfterWeekday,
+    BeforeWeekday,
 )
 
 
@@ -165,3 +176,75 @@ def test_all_satisfy():
         await engine.join()
 
     asyncio.run(submit_job())
+
+
+def test_condition_operators():
+    assert isinstance(
+        AfterAnother(job_id="1") | AfterAnother(job_id="2"),
+        AnySatisfied
+    )
+    assert isinstance(
+        AfterAnother(job_id="1") & AfterAnother(job_id="2"),
+        AllSatisfied
+    )
+
+
+def test_parse_period_str():
+    assert _parse_period_str("1d").days == 1
+    assert _parse_period_str("1.5h").seconds == 5400
+    assert _parse_period_str("1m").seconds == 60
+    assert _parse_period_str("1s").seconds == 1
+
+    with pytest.raises(ValueError):
+        _parse_period_str("1")
+
+
+def test_parse_weekday_str():
+    assert _parse_weekday_str("mon") == 0
+    assert _parse_weekday_str("tue") == 1
+    assert _parse_weekday_str("wed") == 2
+    assert _parse_weekday_str("thu") == 3
+    assert _parse_weekday_str("fri") == 4
+    assert _parse_weekday_str("sat") == 5
+    assert _parse_weekday_str("sun") == 6
+
+    with pytest.raises(ValueError):
+        _parse_weekday_str("not_exist")
+
+
+def test_parse_clock_str():
+    assert _parse_clock_str("12") == (12, 0, 0)
+    assert _parse_clock_str("12:00") == (12, 0, 0)
+    assert _parse_clock_str("12:00:00") == (12, 0, 0)
+
+    with pytest.raises(ValueError):
+        _parse_clock_str("not_exist")
+
+
+def test_time_condition():
+    assert AfterClock("00:00:00").satisfy(None)
+    assert BeforeClock("23:59:59").satisfy(None)
+    assert AfterTimepoint(datetime.now() - timedelta(hours=1)).satisfy(None)
+    assert BeforeTimepoint(datetime.now() + timedelta(hours=1)).satisfy(None)
+    assert AfterTimepoint(
+        datetime.now() + timedelta(hours=1), compare_fields=["hour"]
+    ).satisfy(None)
+    assert BeforeTimepoint(
+        datetime.now() - timedelta(hours=1), compare_fields=["hour"]
+    ).satisfy(None)
+    assert not AfterTimepoint(
+        datetime.now() - timedelta(hours=1), compare_fields=["hour"]
+    ).satisfy(None)
+    assert not BeforeTimepoint(
+        datetime.now() + timedelta(hours=1), compare_fields=["hour"]
+    ).satisfy(None)
+    assert AfterWeekday("mon").satisfy(None)
+    assert BeforeWeekday("sun").satisfy(None)
+
+    with pytest.raises(ValueError):
+        AfterTimepoint(
+            datetime.now(), compare_fields=["not_exist"]).satisfy(None)
+
+    with pytest.raises(ValueError):
+        BeforeTimepoint(
+            datetime.now(), compare_fields=["not_exist"]).satisfy(None)

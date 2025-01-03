@@ -37,6 +37,10 @@ class EngineSetting:
             if not set, will create a cache directory in
             .executor/{engine.id}.
         print_traceback: Whether to print traceback when job failed.
+        kwargs_inject_key: Key to inject engine to job kwargs.
+            If set, the engine will be injected to job kwargs
+            with the key.
+            default is "__engine__".
     """
     max_thread_jobs: T.Optional[int] = None
     max_process_jobs: T.Optional[int] = None
@@ -45,6 +49,7 @@ class EngineSetting:
     cache_type: T.Literal["diskcache", "none"] = "none"
     cache_path: T.Optional[str] = None
     print_traceback: bool = True
+    kwargs_inject_key: str = "__engine__"
 
 
 @dataclass
@@ -193,6 +198,9 @@ class Engine(ExecutorObj):
             if job.status == "created":
                 job.engine = self
                 job._status = "pending"
+                func_var_names = job.func.__code__.co_varnames
+                if self.setting.kwargs_inject_key in func_var_names:
+                    job.kwargs[self.setting.kwargs_inject_key] = self
                 self.jobs.add(job)
             else:
                 job.status = "pending"

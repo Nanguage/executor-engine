@@ -32,7 +32,7 @@ By harnessing the capabilities of Executor Engine, users can effortlessly constr
 
 + 📚 Support multiple job types
   * `LocalJob`, `ThreadJob`, `ProcessJob`, `DaskJob`
-  * Extend job types: `SubprocessJob`, `WebappJob`
+  * Extend job types: `SubprocessJob`, `WebappJob`, `CronJob`
 + 🔧 Job management
   * Job dependency management.
   * Job status: Pending, Running, Done, Failed, Cancelled.

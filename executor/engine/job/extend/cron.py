@@ -13,8 +13,8 @@ from .sentinel import SentinelJob
 
 every = EveryPeriod
 daily = EveryPeriod("1d")
+weekly = EveryPeriod("7d")
 hourly = EveryPeriod("1h")
-monthly = EveryPeriod("1m")
 
 before_clock = BeforeClock
 after_clock = AfterClock

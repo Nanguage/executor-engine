@@ -43,7 +43,7 @@ def SentinelJob(
     else:
         base_class = job_type
 
-    async def submitter(__engine__: "Engine"):
+    async def sentinel(__engine__: "Engine"):
         while True:
             if sentinel_condition.satisfy(__engine__):
                 job = base_class(func, **attrs)
@@ -51,7 +51,7 @@ def SentinelJob(
             await asyncio.sleep(time_delta)
 
     sentinel_job = LocalJob(
-        submitter,
+        sentinel,
         **sentinel_attrs
     )
     return sentinel_job

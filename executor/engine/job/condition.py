@@ -187,7 +187,7 @@ class EveryPeriod(TimeCondition):
     """
     period_str: str
     last_submitted_at: T.Optional[datetime] = None
-    immediate: bool = True
+    immediate: bool = False
 
     def satisfy(self, _) -> bool:
         period = _parse_period_str(self.period_str)

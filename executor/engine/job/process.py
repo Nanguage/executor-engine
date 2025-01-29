@@ -2,6 +2,9 @@ import asyncio
 import functools
 from inspect import iscoroutinefunction
 
+import loky.process_executor
+if hasattr(loky.process_executor, "_MAX_MEMORY_LEAK_SIZE"):
+    loky.process_executor._MAX_MEMORY_LEAK_SIZE = int(1e13)
 from loky.process_executor import ProcessPoolExecutor
 
 from .base import Job

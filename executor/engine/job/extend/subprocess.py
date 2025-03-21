@@ -120,7 +120,8 @@ def SubprocessJob(
                     runner.run(**pkwargs)
                     with open(path_stdout, 'w') as fo, \
                          open(path_stderr, 'w') as fe:
-                        retcode = runner.write_stream_until_stop(fo, fe)
+                        retcode = runner.write_stream_until_stop(
+                            fo, fe, flush_streams_each_time=True)
                     return retcode
             else:
                 def _run_cmd(runner: ProcessRunner):

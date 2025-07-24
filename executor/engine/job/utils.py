@@ -51,7 +51,6 @@ def _gen_initializer(gen_func, args=tuple(), kwargs={}):  # pragma: no cover
 
 
 def _gen_next(send_value=None, fut=None):  # pragma: no cover
-    global _thread_locals
     if fut is None:
         g = _thread_locals._generator
     else:
@@ -63,7 +62,6 @@ def _gen_next(send_value=None, fut=None):  # pragma: no cover
 
 
 def _gen_anext(send_value=None, fut=None):  # pragma: no cover
-    global _thread_locals
     if fut is None:
         g = _thread_locals._generator
     else:

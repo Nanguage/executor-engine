@@ -112,16 +112,30 @@ def SubprocessJob(
             pkwargs = popen_kwargs or {}
             pkwargs['cwd'] = target_dir
 
-            if self.redirect_out_err:
-                path_stdout = cache_dir / 'stdout.txt'
-                path_stderr = cache_dir / 'stderr.txt'
+            if self.redirect_out_err is not False:
+                if isinstance(self.redirect_out_err, str):
+                    path_stdout = Path(self.redirect_out_err)
+                    if not path_stdout.parent.exists():
+                        path_stdout.parent.mkdir(parents=True, exist_ok=True)
+                    path_stdout = self.redirect_out_err
+                    path_stderr = self.redirect_out_err
+                else:
+                    path_stdout = cache_dir / 'stdout.txt'
+                    path_stderr = cache_dir / 'stderr.txt'
 
                 def _run_cmd(runner: ProcessRunner):  # pragma: no cover
                     runner.run(**pkwargs)
-                    with open(path_stdout, 'w') as fo, \
-                         open(path_stderr, 'w') as fe:
-                        retcode = runner.write_stream_until_stop(
-                            fo, fe, flush_streams_each_time=True)
+                    if path_stdout == path_stderr:
+                        fo = open(path_stdout, 'a')
+                        fe = fo
+                    else:
+                        fo = open(path_stdout, 'a')
+                        fe = open(path_stderr, 'a')
+                    retcode = runner.write_stream_until_stop(
+                        fo, fe, flush_streams_each_time=True)
+                    fo.close()
+                    if path_stdout != path_stderr:
+                        fe.close()
                     return retcode
             else:
                 def _run_cmd(runner: ProcessRunner):

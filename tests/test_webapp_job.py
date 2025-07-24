@@ -22,7 +22,7 @@ def test_run_webapp():
 
     async def submit_job():
         with pytest.raises(NotImplementedError):
-            job = WebappJob(run_simple_httpd, ip="2.2.2.2", port=8001, check_delta=0.5)
+            job = WebappJob(run_simple_httpd, ip="2.2.2.2", port=8088, check_delta=0.5)
 
         with pytest.raises(ValueError):
             job = WebappJob("python -m http.server -b ip port")
@@ -30,10 +30,10 @@ def test_run_webapp():
         with pytest.raises(TypeError):
             job = WebappJob(1)
 
-        job = WebappJob(run_simple_httpd, ip="127.0.0.1", port=8001, check_delta=0.5)
+        job = WebappJob(run_simple_httpd, ip="127.0.0.1", port=8088, check_delta=0.5)
         await engine.submit_async(job)
         await asyncio.sleep(5)
-        assert job.port == 8001
+        assert job.port == 8088
         assert job.status == "running"
         await job.cancel()
         assert job.status == "cancelled"

@@ -1,4 +1,6 @@
 import asyncio
+import pytest
+import shutil
 
 from executor.engine.core import Engine, EngineSetting
 from executor.engine.job.extend.subprocess import SubprocessJob
@@ -154,6 +156,20 @@ def test_passing_env():
             assert f.read().strip() == '2'
 
     asyncio.run(submit_job())
+
+
+@pytest.mark.asyncio
+async def test_redirect_out_err_str():
+    engine = Engine()
+    unexist_dir = "tmp/1"
+    job = SubprocessJob("python -c 'print(1 + 1); raise ValueError(\"error\")'", redirect_out_err=f"{unexist_dir}/test.log")
+    await engine.submit_async(job)
+    await job.join()
+    with open(f"{unexist_dir}/test.log") as f:
+        content = f.read()
+        assert "2" in content
+        assert "error" in content
+    #shutil.rmtree(unexist_dir)
 
 
 def test_cancel():

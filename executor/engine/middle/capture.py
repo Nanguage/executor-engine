@@ -3,6 +3,10 @@ import typing as T
 from functools import update_wrapper
 from pathlib import Path
 import traceback
+import loguru
+
+
+LOGURU_HANDLERS = {}
 
 
 class Tee(object):
@@ -23,10 +27,18 @@ class Tee(object):
 
     def __enter__(self):
         setattr(sys, self.stream_type, self)
+        fname = repr(self.file)
+        if fname not in LOGURU_HANDLERS:
+            loguru_handler = loguru.logger.add(self.file)
+            LOGURU_HANDLERS[fname] = loguru_handler
         return self
 
     def __exit__(self, _type, _value, _traceback):
         setattr(sys, self.stream_type, self.stream)
+        fname = repr(self.file)
+        if fname in LOGURU_HANDLERS:
+            loguru.logger.remove(LOGURU_HANDLERS[fname])
+            del LOGURU_HANDLERS[fname]
 
 
 class CaptureOut(object):
@@ -41,13 +53,26 @@ class CaptureOut(object):
         self.capture_traceback = capture_traceback
 
     def __call__(self, *args, **kwargs) -> T.Any:
-        with open(self.stdout_file, 'w') as fo, \
-             open(self.stderr_file, 'w') as fe:
-            with Tee(fo, 'stdout'), Tee(fe, 'stderr'):
-                try:
-                    res = self.func(*args, **kwargs)
-                except Exception as e:
-                    if self.capture_traceback:
-                        traceback.print_exc(file=fe)
-                    raise e
+        if not self.stdout_file.parent.exists():
+            self.stdout_file.parent.mkdir(parents=True, exist_ok=True)  # pragma: no cover
+        if not self.stderr_file.parent.exists():
+            self.stderr_file.parent.mkdir(parents=True, exist_ok=True)  # pragma: no cover
+
+        if self.stdout_file == self.stderr_file:
+            outf = open(self.stdout_file, 'a')
+            errf = outf
+        else:
+            outf = open(self.stdout_file, 'a')
+            errf = open(self.stderr_file, 'a')
+        with Tee(outf, 'stdout'), Tee(errf, 'stderr'):
+            try:
+                res = self.func(*args, **kwargs)
+            except Exception as e:
+                if self.capture_traceback:
+                    traceback.print_exc()
+                raise e
+            finally:
+                outf.close()
+                if self.stdout_file != self.stderr_file:
+                    errf.close()
         return res

@@ -83,7 +83,7 @@ class Job(ExecutorObj):
             name: T.Optional[str] = None,
             condition: T.Optional[Condition] = None,
             wait_time_delta: float = 0.01,
-            redirect_out_err: bool = False,
+            redirect_out_err: bool | str = False,
             change_dir: bool = False,
             **attrs
             ) -> None:
@@ -103,7 +103,8 @@ class Job(ExecutorObj):
             wait_time_delta: The time delta between each
                 check of the condition.
             redirect_out_err: Whether to redirect the stdout
-                and stderr to the log.
+                and stderr to the log. If is a string, it will be
+                used as the path of the log file.
             change_dir: Whether to change the working directory
                 to the log directory.
             **attrs: The attributes of the job.
@@ -255,9 +256,13 @@ class Job(ExecutorObj):
         change the dir, redirect the stdout and stderr
         before the actual run."""
         cache_dir = self.cache_dir.resolve()
-        if self.redirect_out_err and (not isinstance(self.func, CaptureOut)):
-            path_stdout = cache_dir / 'stdout.txt'
-            path_stderr = cache_dir / 'stderr.txt'
+        if (self.redirect_out_err is not False) and (not isinstance(self.func, CaptureOut)):
+            if isinstance(self.redirect_out_err, str):
+                path_stdout = Path(self.redirect_out_err)
+                path_stderr = Path(self.redirect_out_err)
+            else:
+                path_stdout = cache_dir / 'stdout.txt'
+                path_stderr = cache_dir / 'stderr.txt'
             self.func = CaptureOut(self.func, path_stdout, path_stderr)
         if self.change_dir:
             self.func = ChDir(self.func, cache_dir)

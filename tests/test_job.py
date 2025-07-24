@@ -1,4 +1,6 @@
 import asyncio
+import os
+import shutil
 import time
 
 import pytest
@@ -372,3 +374,27 @@ async def test_async_func_job():
             await engine.submit_async(job)
             await job.wait_until_status("done")
             assert job.result() == 2
+
+
+@pytest.mark.asyncio
+async def test_redirect_out_err():
+    with Engine() as engine:
+        def func():
+            import loguru
+            logger = loguru.logger
+            logger.info("test")
+            logger.error("test2")
+            import sys
+            print("test3", file=sys.stderr)
+            print("test4", file=sys.stdout)
+        unexist_dir = "tmp/1"
+        job = ProcessJob(func, redirect_out_err=f"{unexist_dir}/test.log")
+        await engine.submit_async(job)
+        await job.wait_until_status("done")
+        with open(f"{unexist_dir}/test.log", "r") as f:
+            content = f.read()
+            assert "test" in content
+            assert "test2" in content
+            assert "test3" in content
+            assert "test4" in content
+        shutil.rmtree(unexist_dir)

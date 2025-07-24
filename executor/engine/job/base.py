@@ -83,7 +83,7 @@ class Job(ExecutorObj):
             name: T.Optional[str] = None,
             condition: T.Optional[Condition] = None,
             wait_time_delta: float = 0.01,
-            redirect_out_err: bool | str = False,
+            redirect_out_err: T.Union[bool, str] = False,
             change_dir: bool = False,
             **attrs
             ) -> None:

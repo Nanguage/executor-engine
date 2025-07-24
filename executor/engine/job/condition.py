@@ -291,24 +291,12 @@ class AfterTimepoint(TimeCondition):
 
     Attributes:
         timepoint: The timepoint.
-        compare_fields: The fields to compare.
-            Fields: "year", "month", "day", "hour", "minute", "second"
     """
 
     timepoint: datetime
-    compare_fields: T.Optional[T.List[str]] = None
 
     def satisfy(self, _) -> bool:
-        if self.compare_fields is None:
-            return datetime.now() > self.timepoint
-        else:
-            for field in self.compare_fields:
-                if field not in _valid_timepoint_fields:
-                    raise ValueError(f"Invalid field: {field}")
-                if getattr(datetime.now(), field) >= \
-                   getattr(self.timepoint, field):
-                    return False
-            return True
+        return datetime.now() > self.timepoint
 
 
 @dataclass
@@ -317,20 +305,8 @@ class BeforeTimepoint(TimeCondition):
 
     Attributes:
         timepoint: The timepoint.
-        compare_fields: The fields to compare.
-            Fields: "year", "month", "day", "hour", "minute", "second"
     """
     timepoint: datetime
-    compare_fields: T.Optional[T.List[str]] = None
 
     def satisfy(self, _) -> bool:
-        if self.compare_fields is None:
-            return datetime.now() < self.timepoint
-        else:
-            for field in self.compare_fields:
-                if field not in _valid_timepoint_fields:
-                    raise ValueError(f"Invalid field: {field}")
-                if getattr(datetime.now(), field) <= \
-                   getattr(self.timepoint, field):
-                    return False
-            return True
+        return datetime.now() < self.timepoint

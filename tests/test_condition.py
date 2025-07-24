@@ -226,25 +226,6 @@ def test_time_condition():
     assert BeforeClock("23:59:59").satisfy(None)
     assert AfterTimepoint(datetime.now() - timedelta(hours=1)).satisfy(None)
     assert BeforeTimepoint(datetime.now() + timedelta(hours=1)).satisfy(None)
-    assert AfterTimepoint(
-        datetime.now() + timedelta(hours=1), compare_fields=["hour"]
-    ).satisfy(None)
-    assert BeforeTimepoint(
-        datetime.now() - timedelta(hours=1), compare_fields=["hour"]
-    ).satisfy(None)
-    assert not AfterTimepoint(
-        datetime.now() - timedelta(hours=1), compare_fields=["hour"]
-    ).satisfy(None)
-    assert not BeforeTimepoint(
-        datetime.now() + timedelta(hours=1), compare_fields=["hour"]
-    ).satisfy(None)
     assert AfterWeekday("mon").satisfy(None)
     assert BeforeWeekday("sun").satisfy(None)
 
-    with pytest.raises(ValueError):
-        AfterTimepoint(
-            datetime.now(), compare_fields=["not_exist"]).satisfy(None)
-
-    with pytest.raises(ValueError):
-        BeforeTimepoint(
-            datetime.now(), compare_fields=["not_exist"]).satisfy(None)

@@ -54,9 +54,11 @@ class CaptureOut(object):
 
     def __call__(self, *args, **kwargs) -> T.Any:
         if not self.stdout_file.parent.exists():
-            self.stdout_file.parent.mkdir(parents=True, exist_ok=True)  # pragma: no cover
+            self.stdout_file.parent.mkdir(
+                parents=True, exist_ok=True)  # pragma: no cover
         if not self.stderr_file.parent.exists():
-            self.stderr_file.parent.mkdir(parents=True, exist_ok=True)  # pragma: no cover
+            self.stderr_file.parent.mkdir(
+                parents=True, exist_ok=True)  # pragma: no cover
 
         if self.stdout_file == self.stderr_file:
             outf = open(self.stdout_file, 'a')

@@ -256,7 +256,8 @@ class Job(ExecutorObj):
         change the dir, redirect the stdout and stderr
         before the actual run."""
         cache_dir = self.cache_dir.resolve()
-        if (self.redirect_out_err is not False) and (not isinstance(self.func, CaptureOut)):
+        if (self.redirect_out_err is not False) and \
+            (not isinstance(self.func, CaptureOut)):
             if isinstance(self.redirect_out_err, str):
                 path_stdout = Path(self.redirect_out_err)
                 path_stderr = Path(self.redirect_out_err)
